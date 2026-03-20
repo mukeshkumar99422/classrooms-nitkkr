@@ -47,21 +47,28 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
         d.email.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const handleAdd = async (formData: FormData) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
+    const formData = new FormData(e.currentTarget)
     const result = await createDepartment(formData)
     setLoading(false)
     if (result.error) {
       toast.error(result.error)
     } else {
       toast.success('Department created successfully')
+      if (result.emailError) {
+        toast.warning('Account created but welcome email could not be sent. Please share credentials manually.')
+      }
       setAddOpen(false)
       router.refresh()
     }
   }
 
-  const handleEdit = async (formData: FormData) => {
+  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
+    const formData = new FormData(e.currentTarget)
     const result = await updateDepartment(formData)
     setLoading(false)
     if (result.error) {
@@ -116,7 +123,7 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
                 Create a new department account with login credentials.
               </DialogDescription>
             </DialogHeader>
-            <form action={handleAdd} className="space-y-4">
+            <form onSubmit={handleAdd} className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-slate-300">Department Name</Label>
                 <Input
@@ -236,7 +243,7 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
             </DialogDescription>
           </DialogHeader>
           {selectedDept && (
-            <form action={handleEdit} className="space-y-4">
+            <form onSubmit={handleEdit} className="space-y-4">
               <input type="hidden" name="id" value={selectedDept.id} />
               <div className="space-y-2">
                 <Label className="text-slate-300">Department Name</Label>

@@ -380,7 +380,11 @@ export default function RoomsClient({
                           onValueChange={(val) => updateCell(day, period, val)}
                         >
                           <SelectTrigger className="bg-slate-700/30 border-slate-600/50 text-white text-xs h-9 hover:bg-slate-700/60 transition-colors">
-                            <SelectValue placeholder="—" />
+                            <span>
+                              {grid[day]?.[period]
+                                ? nonAdminDepts.find((d) => d.id === grid[day][period])?.name || '—'
+                                : '—'}
+                            </span>
                           </SelectTrigger>
                           <SelectContent className="bg-slate-800 border-slate-700">
                             <SelectItem value="__empty__" className="text-slate-500">
