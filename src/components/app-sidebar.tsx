@@ -66,13 +66,8 @@ export function AppSidebar({ isAdmin, departmentName }: SidebarProps) {
 
       {/* Role Badge */}
       <div className="px-4 py-3">
-        <div className={cn(
-          "px-3 py-1.5 rounded-lg text-xs font-medium text-center",
-          isAdmin
-            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-            : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-        )}>
-          {isAdmin ? '⚡ Administrator' : `📋 ${departmentName || 'Department'}`}
+        <div className="px-3 py-1.5 rounded-lg text-xs font-medium text-center bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          {isAdmin ? 'Administrator' : `${departmentName || 'Department'}`}
         </div>
       </div>
 
@@ -130,7 +125,10 @@ export function AppSidebar({ isAdmin, departmentName }: SidebarProps) {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-800 rounded-lg border border-slate-700 text-white"
+        className={cn(
+          'lg:hidden fixed top-4 z-50 p-2 bg-slate-800 rounded-lg border border-slate-700 text-white transition-all duration-300',
+          mobileOpen ? 'left-[216px]' : 'left-4'
+        )}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
