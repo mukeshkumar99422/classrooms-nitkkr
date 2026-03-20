@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { updateScheduleDetails } from '@/app/actions/schedules'
-import { generateScheduleExcel } from '@/lib/excel'
 import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -74,7 +73,8 @@ export default function RoomDetailClient({
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    const { generateScheduleExcel } = await import('@/lib/excel')
     const excelData = generateScheduleExcel(room.name, schedules.map(s => ({
       ...s,
       department: departments.find(d => d.id === s.department_id),

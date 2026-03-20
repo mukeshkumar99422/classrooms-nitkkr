@@ -28,6 +28,14 @@ export async function createClient() {
   )
 }
 
+// Fast auth check — reads session from cookie without making an API call.
+// Safe to use in pages because middleware already verifies with getUser().
+export async function getSessionUser() {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return { supabase, user: session?.user ?? null }
+}
+
 export async function createAdminClient() {
   // Use the standard supabase-js client (NOT @supabase/ssr) for admin operations.
   // The SSR client attaches user session cookies which causes RLS to be evaluated

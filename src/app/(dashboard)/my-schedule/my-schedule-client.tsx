@@ -1,7 +1,6 @@
 'use client'
 
 import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
-import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
 import { Download, Calendar, DoorOpen } from 'lucide-react'
 import { toast } from 'sonner'
@@ -35,7 +34,8 @@ export default function MyScheduleClient({
     )
   }
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
+    const XLSX = await import('xlsx')
     const wb = XLSX.utils.book_new()
 
     Object.entries(byRoom).forEach(([roomId, roomSchedules]) => {

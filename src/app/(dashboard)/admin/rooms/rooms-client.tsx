@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { createRoom, deleteRoom } from '@/app/actions/rooms'
 import { bulkUpsertSchedules } from '@/app/actions/schedules'
-import { parseScheduleExcel } from '@/lib/excel'
 import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -149,6 +148,7 @@ export default function RoomsClient({
     const file = e.target.files?.[0]
     if (!file) return
 
+    const { parseScheduleExcel } = await import('@/lib/excel')
     const data = await file.arrayBuffer()
     const result = parseScheduleExcel(data, nonAdminDepts)
 
