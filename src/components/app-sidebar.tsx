@@ -50,13 +50,14 @@ export function AppSidebar({ isAdmin, departmentName }: SidebarProps) {
       {/* Logo + Title */}
       <div className="p-5 border-b border-slate-700/50">
         <div className="flex items-center gap-3">
-          <Image
-            src="/logo.png"
-            alt="NIT Kurukshetra"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+          <div className='bg-white p-2 rounded-full'>
+            <Image
+              src="/logo.png"
+              alt="NIT Kurukshetra"
+              width={40}
+              height={40}
+            />
+          </div>
           <div className="min-w-0">
             <h1 className="text-sm font-bold text-white truncate">NIT Kurukshetra</h1>
             <p className="text-xs text-slate-400">Classroom Scheduler</p>
