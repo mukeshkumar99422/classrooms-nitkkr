@@ -11,13 +11,12 @@ interface MyScheduleClientProps {
   department: Department
   schedules: Schedule[]
   rooms: Room[]
-  departments: Department[]
 }
 
 export default function MyScheduleClient({
   department,
   schedules,
-  rooms,
+  rooms
 }: MyScheduleClientProps) {
   // Group schedules by room
   const byRoom = schedules.reduce<Record<string, Schedule[]>>((acc, s) => {

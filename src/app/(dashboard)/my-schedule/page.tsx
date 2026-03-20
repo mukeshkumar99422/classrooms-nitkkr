@@ -26,14 +26,12 @@ export default async function MySchedulePage() {
     .eq('department_id', user.id)
 
   const { data: rooms } = await supabase.from('rooms').select('*')
-  const { data: departments } = await supabase.from('departments').select('*')
 
   return (
     <MyScheduleClient
       department={department}
       schedules={schedules || []}
       rooms={rooms || []}
-      departments={departments || []}
     />
   )
 }
