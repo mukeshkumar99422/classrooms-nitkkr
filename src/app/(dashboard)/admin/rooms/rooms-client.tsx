@@ -22,7 +22,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Plus, Trash2, DoorOpen, Upload, Grid3X3, Search, Calendar, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
