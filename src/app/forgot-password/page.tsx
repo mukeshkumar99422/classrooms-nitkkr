@@ -38,13 +38,12 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <Card className="w-full max-w-md border-slate-700/50 bg-slate-800/80 backdrop-blur-xl shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto flex items-center justify-center">
+          <div className="mx-auto flex items-center justify-center bg-white p-3 rounded-full">
             <Image
               src="/logo.png"
               alt="NIT Kurukshetra"
               width={64}
               height={64}
-              className="rounded-full"
             />
           </div>
           <div>
