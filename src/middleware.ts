@@ -8,15 +8,19 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login', '/forgot-password', '/reset-password', '/auth/callback']
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
-  // Initialize Supabase Response
-  let supabaseResponse = NextResponse.next({ request })
+  // CHANGE: Use 'const' here to fix the ESLint Error
+  const supabaseResponse = NextResponse.next({
+    request,
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll()
+        },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
@@ -27,30 +31,34 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Use getSession for faster JWT-only validation during navigation
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use getSession for faster JWT-only validation
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   const user = session?.user
 
-  // --- YOUR PROPOSED IMPROVEMENTS ---
+  // --- Optimized Early Exit Logic ---
 
-  // 1. User exists and accessing private area -> Proceed immediately
+  // 1. User exists and path is private -> Success, move on
   if (user && !isPublicPath) {
     return supabaseResponse
   }
 
-  // 2. No user and accessing login/public page -> Proceed immediately
+  // 2. No user and path is public -> Success, move on (to Login/Reset pages)
   if (!user && isPublicPath) {
     return supabaseResponse
   }
 
-  // 3. No user and trying to access private area -> Redirect to login
+  // 3. No user and path is private -> Redirect to Login
   if (!user && !isPublicPath) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const url = new URL('/login', request.url)
+    return NextResponse.redirect(url)
   }
 
-  // 4. Edge Case: User exists but tries to go to /login -> Redirect to Home
+  // 4. User exists but tries to access login/public path -> Redirect to Home
   if (user && isPublicPath) {
-    return NextResponse.redirect(new URL('/', request.url))
+    const url = new URL('/', request.url)
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse
