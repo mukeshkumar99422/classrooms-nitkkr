@@ -1,10 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import RoomsClient from './rooms-client'
 
-export const revalidate = 300 // Revalidate every 5 minutes
-
 export default async function AdminRoomsPage() {
-  const supabase = await createClient()
+  const { supabase, user } = await getSessionUser()
+
+  if (!user) redirect('/login')
+
+  const { data: currentUser } = await supabase
+    .from('departments')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!currentUser?.is_admin) redirect('/rooms')
 
   const { data: rooms } = await supabase.from('rooms').select('*').order('name')
   const { data: departments } = await supabase.from('departments').select('*').order('name')

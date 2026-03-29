@@ -1,10 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import RoomsBrowseClient from './rooms-browse-client'
 
-export const revalidate = 300 // Revalidate every 5 minutes
-
 export default async function RoomsPage() {
-  const supabase = await createClient()
+  const { supabase, user } = await getSessionUser()
+
+  if (!user) redirect('/login')
 
   const { data: rooms } = await supabase.from('rooms').select('*').order('name')
 

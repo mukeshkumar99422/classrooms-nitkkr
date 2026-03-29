@@ -1,11 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    optimizePackageImports: ['lucide-react', '@supabase/supabase-js', '@supabase/ssr'],
-  },
-  images: {
-    domains: [], // Add your image domains here if needed
-  },
-}
+const nextConfig = {};
 
-export default nextConfig
+export default nextConfig;

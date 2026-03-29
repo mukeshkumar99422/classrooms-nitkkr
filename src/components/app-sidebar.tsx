@@ -15,14 +15,17 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-import { useDashboard } from '@/lib/dashboard-context'
 
-export function AppSidebar() {
+interface SidebarProps {
+  isAdmin: boolean
+  departmentName?: string
+}
+
+export function AppSidebar({ isAdmin, departmentName }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { isAdmin, department } = useDashboard()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -65,7 +68,7 @@ export function AppSidebar() {
       {/* Role Badge */}
       <div className="px-4 py-3">
         <div className="px-3 py-1.5 rounded-lg text-xs font-medium text-center bg-blue-500/10 text-blue-400 border border-blue-500/20">
-          {isAdmin ? 'Administrator' : `${department?.name || 'Department'}`}
+          {isAdmin ? 'Administrator' : `${departmentName || 'Department'}`}
         </div>
       </div>
 

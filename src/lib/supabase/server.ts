@@ -32,8 +32,8 @@ export async function createClient() {
 // Safe to use in pages because middleware already verifies with getUser().
 export async function getSessionUser() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return { supabase, user }
+  const { data: { session } } = await supabase.auth.getSession()
+  return { supabase, user: session?.user ?? null }
 }
 
 export async function createAdminClient() {
