@@ -1,4 +1,4 @@
-import { getSessionUser } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import RoomDetailClient from './room-detail-client'
 
@@ -8,7 +8,9 @@ export default async function RoomDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const { supabase, user } = await getSessionUser()
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
 
