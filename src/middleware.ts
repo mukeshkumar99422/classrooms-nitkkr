@@ -2,53 +2,55 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  const { pathname } = request.nextUrl
+  
+  // Define public routes
+  const publicPaths = ['/login', '/forgot-password', '/reset-password', '/auth/callback']
+  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
+
+  // Initialize Supabase Response
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
+          cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          })
         },
       },
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use getSession for faster JWT-only validation during navigation
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
 
-  // Public routes
-  const publicPaths = ['/login', '/forgot-password', '/reset-password', '/auth/callback']
-  const isPublicPath = publicPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
+  // --- YOUR PROPOSED IMPROVEMENTS ---
 
-  if (!user && !isPublicPath) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // 1. User exists and accessing private area -> Proceed immediately
+  if (user && !isPublicPath) {
+    return supabaseResponse
   }
 
-  if (user && request.nextUrl.pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
+  // 2. No user and accessing login/public page -> Proceed immediately
+  if (!user && isPublicPath) {
+    return supabaseResponse
+  }
+
+  // 3. No user and trying to access private area -> Redirect to login
+  if (!user && !isPublicPath) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // 4. Edge Case: User exists but tries to go to /login -> Redirect to Home
+  if (user && isPublicPath) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   return supabaseResponse
