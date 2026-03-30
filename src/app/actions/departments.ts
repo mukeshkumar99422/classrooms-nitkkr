@@ -106,11 +106,19 @@ export async function updateDepartment(formData: FormData) {
 export async function deleteDepartment(id: string) {
   const supabase = await createAdminClient()
 
-  // Cascade delete department record (RLS)
+  // 1. Delete all schedules referencing this department
+  const { error: schedError } = await supabase
+    .from('schedules')
+    .delete()
+    .eq('department_id', id);
+
+  if (schedError) return { error: schedError.message };
+
+  // 2. Delete department record
   const { error: dbError } = await supabase.from('departments').delete().eq('id', id)
   if (dbError) return { error: dbError.message }
 
-  // Delete auth user
+  // 3. Delete auth user
   const { error: authError } = await supabase.auth.admin.deleteUser(id)
   if (authError) return { error: authError.message };
 

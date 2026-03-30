@@ -10,29 +10,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  // const supabase = await createClient()
-  // const {
-  //   data: { user },
-  // } = await supabase.auth.getUser()
-
-  // if (!user) {
-  //   redirect('/login')
-  // }
-
-  // // Get department info
-  // const { data: department } = await supabase
-  //   .from('departments')
-  //   .select('*')
-  //   .eq('id', user.id)
-  //   .single()
-
   const department = await getCachedDepartment()
 
   if (!department) redirect('/login')
 
 
   return (
-    <UserProvider value={department}>
+    <UserProvider initialDepartment={department}>
       <div className="flex h-screen bg-slate-950">
         <AppSidebar/>
         <main className="flex-1 overflow-auto">

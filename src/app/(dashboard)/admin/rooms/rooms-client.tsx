@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createRoom, deleteRoom } from '@/app/actions/rooms'
-import { bulkUpsertSchedules } from '@/app/actions/schedules'
+import { bulkUpsertSchedules, getRoomSchedule } from '@/app/actions/schedules'
 import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,14 +22,15 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select'
-import { Plus, Trash2, DoorOpen, Upload, Grid3X3, Search, Calendar, Pencil } from 'lucide-react'
+import { Plus, Trash2, DoorOpen, Upload, Grid3X3, Search, Calendar, Pencil, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@/context/user-context'
 
 interface RoomsClientProps {
   rooms: Room[]
   departments: Department[]
-  schedules: Schedule[]
+  initialScheduleCounts?: Record<string, number> // Optional: Pass counts from server for better UX
 }
 
 type ScheduleGrid = Record<string, Record<number, string | null>>
@@ -55,10 +56,11 @@ function populateGrid(schedules: Schedule[]): ScheduleGrid {
   return grid
 }
 
+// Main component -----------------------------------------------------------------------------
 export default function RoomsClient({
   rooms,
   departments,
-  schedules,
+  initialScheduleCounts = {},
 }: RoomsClientProps) {
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -68,50 +70,99 @@ export default function RoomsClient({
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
+  const [isFetching, setIsFetching] = useState<string | null>(null) // Stores ID of room being fetched
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const { scheduleCache, setRoomInCache } = useUser()
 
   const nonAdminDepts = departments.filter((d) => !d.is_admin)
-  const filteredRooms = rooms.filter((r) =>
+
+
+  //optimistic ui change
+  const [optimisticRooms, setOptimisticRooms] = useState<Room[]>(rooms)
+
+  useEffect(() => {
+    setOptimisticRooms(rooms)
+  }, [rooms])
+
+  const filteredRooms = optimisticRooms.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
   )
 
+  //-----------
   const handleAdd = async (formData: FormData) => {
-    setLoading(true)
+    const name = formData.get('name') as string
+    if (!name) return
+
+    const tempRoom: Room = {
+      id: Math.random().toString(), // Temporary ID
+      name: name,
+    }
+
+    setOptimisticRooms((prev) => [...prev, tempRoom])
+    setAddOpen(false)
+
     const result = await createRoom(formData)
-    setLoading(false)
+
     if (result.error) {
       toast.error(result.error)
+      // ROLLBACK: Reset to the official rooms prop from server
+      setOptimisticRooms(rooms)
     } else {
       toast.success('Room created successfully')
-      setAddOpen(false)
-      router.refresh()
+      router.refresh() // This will eventually update 'rooms' prop and our useEffect
     }
   }
 
+  //-----------
   const handleDelete = async () => {
     if (!selectedRoom) return
-    setLoading(true)
+
+    const previousRooms = [...optimisticRooms]
+
+    setOptimisticRooms((prev) => prev.filter((r) => r.id !== selectedRoom.id))
+    setDeleteOpen(false)
+
     const result = await deleteRoom(selectedRoom.id)
-    setLoading(false)
+
     if (result.error) {
       toast.error(result.error)
+      // ROLLBACK: Restore the list if the server failed
+      setOptimisticRooms(previousRooms)
     } else {
       toast.success('Room deleted successfully')
-      setDeleteOpen(false)
       setSelectedRoom(null)
       router.refresh()
     }
   }
 
-  const openScheduleEditor = (room: Room) => {
-    const roomSchedules = schedules.filter((s) => s.room_id === room.id)
+  //-----------
+  const openScheduleEditor = async (room: Room) => {
     setSelectedRoom(room)
-    setGrid(roomSchedules.length > 0 ? populateGrid(roomSchedules) : createEmptyGrid())
-    setUploadErrors([])
-    setScheduleOpen(true)
+    
+    if (scheduleCache[room.id]) {
+      setGrid(populateGrid(scheduleCache[room.id]))
+      setScheduleOpen(true)
+      return
+    }
+
+    setIsFetching(room.id)
+    const result = await getRoomSchedule(room.id)
+    setIsFetching(null)
+
+    if (result && 'data' in result && result.data) {
+      const fetchedData = result.data as Schedule[]
+      
+      setRoomInCache(room.id, fetchedData) 
+      
+      setGrid(populateGrid(fetchedData))
+      setScheduleOpen(true)
+    } else if (result && 'error' in result) {
+      toast.error(result.error as string)
+    }
   }
 
+  //-----------
   const handleSaveSchedule = async () => {
     if (!selectedRoom) return
     setLoading(true)
@@ -138,12 +189,22 @@ export default function RoomsClient({
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success('Schedule saved successfully')
+      const savedSchedules = scheduleData
+        .filter(s => s.department_id !== null)
+        .map(s => ({ 
+          ...s, 
+          id: Math.random().toString(),
+          room_id: selectedRoom.id 
+        })) as Schedule[]
+      
+      setRoomInCache(selectedRoom.id, savedSchedules)
+      
+      toast.success('Schedule saved and synchronized')
       setScheduleOpen(false)
-      router.refresh()
     }
   }
 
+  //-----------
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -158,25 +219,44 @@ export default function RoomsClient({
       return
     }
 
-    // Map department names to IDs
+    // 1. PRE-INDEX DEPARTMENTS: Create a Map for O(1) lookups
+    const deptMap = new Map(
+      nonAdminDepts.map((d) => [d.name.toLowerCase().trim(), d.id])
+    )
+
     const newGrid = createEmptyGrid()
+    const unrecognizedDepts = new Set<string>()
+
+    // 2. EFFICIENT MAPPING: Loop through Excel rows
     result.schedules.forEach((s) => {
-      const dept = nonAdminDepts.find(
-        (d) => d.name.toLowerCase() === s.department_name.toLowerCase()
-      )
-      if (dept && newGrid[s.day_of_week]) {
-        newGrid[s.day_of_week][s.period_number] = dept.id
+      const normalizedName = s.department_name.toLowerCase().trim()
+      const deptId = deptMap.get(normalizedName)
+      
+      if (deptId && newGrid[s.day_of_week]) {
+        newGrid[s.day_of_week][s.period_number] = deptId
+      } else if (normalizedName !== "") {
+        // Collect names that didn't match for a helpful warning
+        unrecognizedDepts.add(s.department_name)
       }
     })
 
+    // 3. UI UPDATES
     setGrid(newGrid)
     setUploadErrors([])
-    toast.success('Excel file parsed successfully. Review and save.')
+    
+    if (unrecognizedDepts.size > 0) {
+      const names = Array.from(unrecognizedDepts).join(', ')
+      toast.warning(`Excel parsed, but some departments weren't recognized: ${names}`)
+    } else {
+      toast.success('Excel file parsed successfully. Review and save.')
+    }
 
-    // Reset file input
+    // Reset file input so same file can be uploaded again if needed
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+
+  //-----------
   const updateCell = (day: string, period: number, value: string | null) => {
     setGrid((prev) => ({
       ...prev,
@@ -187,8 +267,11 @@ export default function RoomsClient({
     }))
   }
 
+
+  //-----------
   const getRoomScheduleCount = (roomId: string) => {
-    return schedules.filter((s) => s.room_id === roomId).length
+    if (scheduleCache[roomId]) return scheduleCache[roomId].length
+    return initialScheduleCounts[roomId] || 0
   }
 
   return (
@@ -200,41 +283,29 @@ export default function RoomsClient({
             <DoorOpen className="h-7 w-7 text-amber-400" />
             Rooms
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Manage classrooms and their weekly schedules
-          </p>
+          <p className="text-slate-400 text-sm mt-1">Manage classrooms and their weekly schedules</p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger
-            render={<Button className="bg-amber-600 hover:bg-amber-500 text-white" />}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Room
-          </DialogTrigger>
+            render={
+              <Button className="bg-amber-600 hover:bg-amber-500 text-white">
+                <Plus className="h-4 w-4 mr-2" /> Add Room
+              </Button>
+            }
+          />
           <DialogContent className="bg-slate-800 border-slate-700 text-white">
             <DialogHeader>
               <DialogTitle>Add New Room</DialogTitle>
-              <DialogDescription className="text-slate-400">
-                Enter the room name with building prefix (e.g., M312, E201, L102).
-              </DialogDescription>
+              <DialogDescription className="text-slate-400">Enter the room name with building prefix.</DialogDescription>
             </DialogHeader>
             <form action={handleAdd} className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-slate-300">Room Name</Label>
-                <Input
-                  name="name"
-                  placeholder="e.g., M312"
-                  required
-                  className="bg-slate-700/50 border-slate-600 text-white"
-                />
+                <Input name="name" placeholder="e.g., M312" required className="bg-slate-700/50 border-slate-600 text-white" />
               </div>
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setAddOpen(false)} className="text-slate-400 hover:text-white">
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-amber-600 hover:bg-amber-500" disabled={loading}>
-                  {loading ? 'Adding...' : 'Add Room'}
-                </Button>
+                <Button type="button" variant="ghost" onClick={() => setAddOpen(false)} className="text-slate-400 hover:text-white">Cancel</Button>
+                <Button type="submit" className="bg-amber-600 hover:bg-amber-500" disabled={loading}>{loading ? 'Adding...' : 'Add Room'}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -245,7 +316,7 @@ export default function RoomsClient({
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
         <Input
-          placeholder="Search rooms (e.g., M3, E2)..."
+          placeholder="Search rooms..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 max-w-sm"
@@ -254,55 +325,42 @@ export default function RoomsClient({
 
       {/* Rooms Grid */}
       {filteredRooms.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
-          {search ? 'No rooms match your search' : 'No rooms added yet'}
-        </div>
+        <div className="text-center py-16 text-slate-500">{search ? 'No match found' : 'No rooms added yet'}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredRooms.map((room) => {
             const slotCount = getRoomScheduleCount(room.id)
+            const currentlyFetching = isFetching === room.id
             return (
-              <div
-                key={room.id}
-                className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 hover:border-slate-600 transition-all duration-200 group"
-              >
+              <div key={room.id} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 hover:border-slate-600 transition-all group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="bg-amber-500/10 p-2.5 rounded-lg">
                     <DoorOpen className="h-5 w-5 text-amber-400" />
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 h-8 w-8 p-0"
+                      size="sm" variant="ghost" className="text-slate-400 hover:text-amber-400 h-8 w-8 p-0"
+                      disabled={currentlyFetching}
                       onClick={() => openScheduleEditor(room)}
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      {currentlyFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
                     </Button>
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-slate-400 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
-                      onClick={() => {
-                        setSelectedRoom(room)
-                        setDeleteOpen(true)
-                      }}
+                      size="sm" variant="ghost" className="text-slate-400 hover:text-red-400 h-8 w-8 p-0"
+                      onClick={() => { setSelectedRoom(room); setDeleteOpen(true); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
                 <h3 className="text-white font-bold text-lg">{room.name}</h3>
-                <p className="text-slate-500 text-sm mt-1">
-                  {slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet'}
-                </p>
+                <p className="text-slate-500 text-sm mt-1">{slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet'}</p>
                 <Button
-                  size="sm"
-                  variant="ghost"
-                  className="mt-3 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 w-full justify-start px-0"
+                  size="sm" variant="ghost" className="mt-3 text-amber-400 hover:text-amber-300 w-full justify-start px-0"
+                  disabled={currentlyFetching}
                   onClick={() => openScheduleEditor(room)}
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
+                  {currentlyFetching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />}
                   {slotCount > 0 ? 'Edit Schedule' : 'Set Schedule'}
                 </Button>
               </div>
@@ -313,87 +371,49 @@ export default function RoomsClient({
 
       {/* Schedule Editor Dialog */}
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Grid3X3 className="h-5 w-5 text-amber-400" />
-              Schedule — {selectedRoom?.name}
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Set the weekly schedule by selecting departments for each slot, or upload an Excel file.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Upload Area */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 py-3 px-4 bg-slate-700/30 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <Upload className="h-4 w-4" />
-              Upload Excel:
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleExcelUpload}
-              className="text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-amber-600 file:text-white hover:file:bg-amber-500 file:cursor-pointer"
-            />
-          </div>
-
-          {/* Upload Errors */}
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-6xl max-h-[90vh] overflow-y-auto">
           {uploadErrors.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg">
-              <p className="text-red-400 font-medium text-sm mb-1">Errors found in Excel:</p>
-              <ul className="text-red-400/80 text-xs space-y-1">
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-red-400 text-xs font-bold mb-1">Excel Errors:</p>
+              <ul className="list-disc list-inside">
                 {uploadErrors.map((err, i) => (
-                  <li key={i}>• {err}</li>
+                  <li key={i} className="text-red-400/80 text-[10px]">{err}</li>
                 ))}
               </ul>
             </div>
           )}
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Grid3X3 className="h-5 w-5 text-amber-400" /> Schedule — {selectedRoom?.name}
+            </DialogTitle>
+          </DialogHeader>
 
-          {/* Schedule Grid */}
+          <div className="flex items-center gap-3 py-3 px-4 bg-slate-700/30 rounded-lg mb-4">
+            <Upload className="h-4 w-4 text-slate-300" />
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleExcelUpload} className="text-sm text-slate-400" />
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="p-2 text-left text-slate-400 font-semibold bg-slate-700/30 rounded-tl-lg sticky left-0 z-10 min-w-[90px]">
-                    Day / Period
-                  </th>
-                  {PERIODS.map((p) => (
-                    <th key={p} className="p-2 text-center text-slate-400 font-semibold bg-slate-700/30 min-w-[130px]">
-                      P{p}
-                    </th>
-                  ))}
+                  <th className="p-2 text-left text-slate-400 bg-slate-700/30 sticky left-0 z-10 min-w-[100px]">Day/Period</th>
+                  {PERIODS.map(p => <th key={p} className="p-2 text-center text-slate-400 bg-slate-700/30 min-w-[140px]">P{p}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {DAYS_OF_WEEK.map((day) => (
                   <tr key={day} className="border-t border-slate-700/30">
-                    <td className="p-2 text-white font-medium bg-slate-800/50 sticky left-0 z-10">
-                      {day.slice(0, 3)}
-                    </td>
+                    <td className="p-2 text-white font-medium bg-slate-800 sticky left-0 z-10">{day}</td>
                     {PERIODS.map((period) => (
-                      <td key={period} className="p-1.5">
-                        <Select
-                          value={grid[day]?.[period] || '__empty__'}
-                          onValueChange={(val) => updateCell(day, period, val)}
-                        >
-                          <SelectTrigger className="bg-slate-700/30 border-slate-600/50 text-white text-xs h-9 hover:bg-slate-700/60 transition-colors">
-                            <span>
-                              {grid[day]?.[period]
-                                ? nonAdminDepts.find((d) => d.id === grid[day][period])?.name || '—'
-                                : '—'}
-                            </span>
+                      <td key={period} className="p-1">
+                        <Select value={grid[day]?.[period] || '__empty__'} onValueChange={(val) => updateCell(day, period, val)}>
+                          <SelectTrigger className="bg-slate-700/30 border-slate-600/50 text-white text-xs h-9">
+                            <span>{grid[day]?.[period] ? nonAdminDepts.find(d => d.id === grid[day][period])?.name : '—'}</span>
                           </SelectTrigger>
                           <SelectContent className="bg-slate-800 border-slate-700">
-                            <SelectItem value="__empty__" className="text-slate-500">
-                              — Empty —
-                            </SelectItem>
-                            {nonAdminDepts.map((dept) => (
-                              <SelectItem key={dept.id} value={dept.id} className="text-white">
-                                {dept.name}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="__empty__">Empty</SelectItem>
+                            {nonAdminDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </td>
@@ -404,17 +424,9 @@ export default function RoomsClient({
             </table>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setScheduleOpen(false)} className="text-slate-400 hover:text-white">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveSchedule}
-              className="bg-amber-600 hover:bg-amber-500"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Schedule'}
-            </Button>
+          <DialogFooter className="mt-6">
+            <Button variant="ghost" onClick={() => setScheduleOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveSchedule} className="bg-amber-600 hover:bg-amber-500" disabled={loading}>{loading ? 'Saving...' : 'Save Schedule'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -422,23 +434,10 @@ export default function RoomsClient({
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="bg-slate-800 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Delete Room</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              This will permanently delete room &quot;{selectedRoom?.name}&quot; and all its schedule data. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Delete Room</DialogTitle></DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)} className="text-slate-400 hover:text-white">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-500"
-              disabled={loading}
-            >
-              {loading ? 'Deleting...' : 'Delete Permanently'}
-            </Button>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-500" disabled={loading}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -79,3 +79,19 @@ export async function updateScheduleDetails(
   revalidatePath('/rooms')
   return { success: true }
 }
+
+export async function getRoomSchedule(roomId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('schedules')
+    .select('day_of_week, period_number, department_id')
+    .eq('room_id', roomId)
+
+  if (error) {
+    console.error('Fetch error:', error)
+    return { error: 'Failed to fetch schedule' }
+  }
+
+  return { data }
+}
