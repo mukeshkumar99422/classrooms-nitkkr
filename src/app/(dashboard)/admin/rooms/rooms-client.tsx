@@ -371,7 +371,7 @@ export default function RoomsClient({
 
       {/* Schedule Editor Dialog */}
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-slate-800 border-slate-700 text-white w-[95vw] max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
           {uploadErrors.length > 0 && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
               <p className="text-red-400 text-xs font-bold mb-1">Excel Errors:</p>
@@ -394,34 +394,62 @@ export default function RoomsClient({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="p-2 text-left text-slate-400 bg-slate-700/30 sticky left-0 z-10 min-w-[100px]">Day/Period</th>
-                  {PERIODS.map(p => <th key={p} className="p-2 text-center text-slate-400 bg-slate-700/30 min-w-[140px]">P{p}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {DAYS_OF_WEEK.map((day) => (
-                  <tr key={day} className="border-t border-slate-700/30">
-                    <td className="p-2 text-white font-medium bg-slate-800 sticky left-0 z-10">{day}</td>
-                    {PERIODS.map((period) => (
-                      <td key={period} className="p-1">
-                        <Select value={grid[day]?.[period] || '__empty__'} onValueChange={(val) => updateCell(day, period, val)}>
-                          <SelectTrigger className="bg-slate-700/30 border-slate-600/50 text-white text-xs h-9">
-                            <span>{grid[day]?.[period] ? nonAdminDepts.find(d => d.id === grid[day][period])?.name : '—'}</span>
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700">
-                            <SelectItem value="__empty__">Empty</SelectItem>
-                            {nonAdminDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Container with horizontal scroll */}
+            <div className="flex-1 overflow-auto p-4 sm:p-6">
+              <div className="inline-block min-w-full align-middle">
+                <div className="overflow-hidden border border-slate-700 rounded-lg">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-700/50">
+                        {/* Sticky Day/Period Header */}
+                        <th className="sticky left-0 z-20 p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-800 border-r border-b border-slate-700 min-w-[100px]">
+                          Day / Period
+                        </th>
+                        {PERIODS.map((p) => (
+                          <th key={p} className="p-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-700 min-w-[140px]">
+                            Period {p}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-slate-800/30">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <tr key={day} className="hover:bg-slate-700/20 transition-colors">
+                          {/* Sticky Day Name Cell */}
+                          <td className="sticky left-0 z-10 p-3 text-sm font-semibold text-white bg-slate-800 border-r border-b border-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                            {day}
+                          </td>
+                          {PERIODS.map((period) => (
+                            <td key={period} className="p-2 border-b border-slate-700">
+                              <Select 
+                                value={grid[day]?.[period] || '__empty__'} 
+                                onValueChange={(val) => updateCell(day, period, val)}
+                              >
+                                <SelectTrigger className="w-full bg-slate-900/50 border-slate-600/50 text-white text-xs h-10 hover:bg-slate-700/50 focus:ring-amber-500/50">
+                                  <span className="truncate">
+                                    {grid[day]?.[period] 
+                                      ? nonAdminDepts.find(d => d.id === grid[day][period])?.name 
+                                      : '—'}
+                                  </span>
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-800 border-slate-700">
+                                  <SelectItem value="__empty__" className="text-slate-500">Empty</SelectItem>
+                                  {nonAdminDepts.map(d => (
+                                    <SelectItem key={d.id} value={d.id} className="text-white">
+                                      {d.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="mt-6">
