@@ -134,7 +134,7 @@ export function AppSidebar() {
           mobileOpen ? 'left-[216px]' : 'left-4'
         )}
       >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {mobileOpen && <Menu className="h-5 w-5" />}
       </button>
 
       {/* Mobile overlay */}
