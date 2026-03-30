@@ -106,11 +106,14 @@ export async function updateDepartment(formData: FormData) {
 export async function deleteDepartment(id: string) {
   const supabase = await createAdminClient()
 
-  // This one call now deletes both the Department and its Schedules
+  // Cascade delete department record (RLS)
   const { error: dbError } = await supabase.from('departments').delete().eq('id', id)
   if (dbError) return { error: dbError.message }
 
+  // Delete auth user
   const { error: authError } = await supabase.auth.admin.deleteUser(id)
+  if (authError) return { error: authError.message };
+
   revalidatePath('/admin/departments')
   return { success: true }
 }
