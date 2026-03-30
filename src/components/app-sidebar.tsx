@@ -16,16 +16,18 @@ import {
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
-interface SidebarProps {
-  isAdmin: boolean
-  departmentName?: string
-}
+import {useUser} from '@/context/user-context'
 
-export function AppSidebar({ isAdmin, departmentName }: SidebarProps) {
+
+export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const department = useUser()
+  const isAdmin = department?.is_admin || false
+  const departmentName = department?.name || null
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

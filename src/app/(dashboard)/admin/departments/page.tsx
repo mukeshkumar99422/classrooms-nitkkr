@@ -1,22 +1,14 @@
 import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DepartmentsClient from './departments-client'
+import { getCachedDepartment } from '@/lib/supabase/user'
 
 export default async function DepartmentsPage() {
-  const { supabase, user } = await getSessionUser()
+  const department = await getCachedDepartment()
 
-  if (!user) redirect('/login')
+  if (!department?.is_admin) redirect('/rooms')
 
-  // Check if admin
-  const { data: currentUser } = await supabase
-    .from('departments')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!currentUser?.is_admin) redirect('/rooms')
-
-  // Fetch all departments
+  const { supabase } = await getSessionUser()
   const { data: departments } = await supabase
     .from('departments')
     .select('*')

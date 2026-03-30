@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createDepartment, updateDepartment, deleteDepartment } from '@/app/actions/departments'
 import { Department } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -40,7 +40,9 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
   const [search, setSearch] = useState('')
   const router = useRouter()
 
-  const filteredDepts = departments.filter(
+  const [optimisticDepts, setOptimisticDepts] = useState(departments);
+
+  const filteredDepts = optimisticDepts.filter(
     (d) =>
       !d.is_admin &&
       (d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -48,22 +50,35 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
   )
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    const result = await createDepartment(formData)
-    setLoading(false)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+
+    // Create temporary optimistic object
+    const temporaryDept: Department = {
+      id: Math.random().toString(), // Temp ID until server responds
+      name,
+      email,
+      is_admin: false,
+    };
+
+    // 1. Update UI instantly
+    setOptimisticDepts((prev) => [temporaryDept, ...prev]);
+    setAddOpen(false);
+
+    // 2. Perform background server action
+    const result = await createDepartment(formData);
+
     if (result.error) {
-      toast.error(result.error)
+      toast.error(result.error);
+      // Rollback: Reset to official props if failed
+      setOptimisticDepts(departments);
     } else {
-      toast.success('Department created successfully')
-      if (result.emailError) {
-        toast.warning('Account created but welcome email could not be sent. Please share credentials manually.')
-      }
-      setAddOpen(false)
-      router.refresh()
+      toast.success('Department created successfully');
+      router.refresh(); // Syncs official data
     }
-  }
+  };
 
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -82,19 +97,30 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
   }
 
   const handleDelete = async () => {
-    if (!selectedDept) return
-    setLoading(true)
-    const result = await deleteDepartment(selectedDept.id)
-    setLoading(false)
+    if (!selectedDept) return;
+
+    // 1. Update UI instantly
+    const previousDepts = [...optimisticDepts];
+    setOptimisticDepts((prev) => prev.filter((d) => d.id !== selectedDept.id));
+    setDeleteOpen(false);
+
+    // 2. Background server action
+    const result = await deleteDepartment(selectedDept.id);
+
     if (result.error) {
-      toast.error(result.error)
+      toast.error(result.error);
+      // Rollback on failure
+      setOptimisticDepts(previousDepts);
     } else {
-      toast.success('Department deleted successfully')
-      setDeleteOpen(false)
-      setSelectedDept(null)
-      router.refresh()
+      toast.success('Department deleted successfully');
+      setSelectedDept(null);
+      router.refresh();
     }
-  }
+  };
+
+  useEffect(() => {
+    setOptimisticDepts(departments);
+  }, [departments]);
 
   return (
     <div>
