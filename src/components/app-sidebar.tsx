@@ -11,6 +11,7 @@ import {
   Settings,
   Calendar,
   Menu,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -133,7 +134,7 @@ export function AppSidebar() {
           mobileOpen ? 'left-[216px]' : 'left-4'
         )}
       >
-        {mobileOpen && <Menu className="h-5 w-5" />}
+        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       {/* Mobile overlay */}
