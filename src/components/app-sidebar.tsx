@@ -19,13 +19,14 @@ import { useState } from 'react'
 import {useUser} from '@/context/user-context'
 
 
+// main component --------------------------
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const department = useUser()
+  const { department } = useUser()
   const isAdmin = department?.is_admin || false
   const departmentName = department?.name || null
 
