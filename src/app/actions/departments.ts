@@ -99,6 +99,16 @@ export async function updateDepartment(formData: FormData) {
     return { error: dbError.message }
   }
 
+  //delete all schedules referencing this department
+  const { error: schedError } = await supabase
+    .from('schedules')
+    .delete()
+    .eq('department_id', id);
+    
+  if (schedError) {
+    return { error: schedError.message }
+  }
+
   revalidatePath('/admin/departments')
   return { success: true }
 }

@@ -8,6 +8,7 @@ interface UserContextType {
   // The Cache: Key is roomId, Value is array of Schedules
   scheduleCache: Record<string, Schedule[]>
   setRoomScheduleInCache: (roomId: string, schedules: Schedule[]) => void
+  setScheduleCache: (cache: Record<string, Schedule[]>) => void
   updateScheduleInCache: (roomId: string, scheduleId: string, updatedDetails: Partial<Schedule>) => void
 
   roomsCache: Room[] | null
@@ -61,7 +62,7 @@ export function UserProvider({
   const setDepartmentsInCache = (departments: Department[]) => setDepartmentsCache(departments)
 
   return (
-    <UserContext.Provider value={{ department, scheduleCache, setRoomScheduleInCache, roomsCache, setRoomsInCache, departmentsCache, setDepartmentsInCache, updateScheduleInCache, departmentScheduleCache, setDepartmentScheduleInCache }}>
+    <UserContext.Provider value={{ department, scheduleCache,setScheduleCache, setRoomScheduleInCache, roomsCache, setRoomsInCache, departmentsCache, setDepartmentsInCache, updateScheduleInCache, departmentScheduleCache, setDepartmentScheduleInCache }}>
       {children}
     </UserContext.Provider>
   )

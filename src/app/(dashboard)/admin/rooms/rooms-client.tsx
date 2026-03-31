@@ -361,7 +361,7 @@ export default function RoomsClient({
                   </div>
                 </div>
                 <h3 className="text-white font-bold text-lg">{room.name}</h3>
-                <p className="text-slate-500 text-sm mt-1">{slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet'}</p>
+                <p className="text-slate-500 text-sm mt-1">{!scheduleCache[room.id]? 'click to view schedule' : (slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet')}</p>
                 <Button
                   size="sm" variant="ghost" className="mt-3 text-amber-400 hover:text-amber-300 w-full justify-start px-0"
                   disabled={currentlyFetching}

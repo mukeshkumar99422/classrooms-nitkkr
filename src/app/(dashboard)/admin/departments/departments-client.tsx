@@ -26,12 +26,14 @@ import {
 import { Plus, Pencil, Trash2, Building2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@/context/user-context'
 
 interface DepartmentsClientProps {
   departments: Department[]
 }
 
 export default function DepartmentsClient({ departments }: DepartmentsClientProps) {
+  const {setScheduleCache} = useUser()
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -89,6 +91,7 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
     if (result.error) {
       toast.error(result.error)
     } else {
+      setScheduleCache({})
       toast.success('Department updated successfully')
       setEditOpen(false)
       setSelectedDept(null)
@@ -112,6 +115,7 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
       // Rollback on failure
       setOptimisticDepts(previousDepts);
     } else {
+      setScheduleCache({});
       toast.success('Department deleted successfully');
       setSelectedDept(null);
       router.refresh();
