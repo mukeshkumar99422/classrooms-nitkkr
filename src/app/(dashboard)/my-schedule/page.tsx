@@ -1,4 +1,3 @@
-import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MyScheduleClient from './my-schedule-client'
 import { getCachedDepartment } from '@/lib/supabase/user';

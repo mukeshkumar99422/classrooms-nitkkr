@@ -36,7 +36,7 @@ export default function RoomDetailClient({
   currentDepartmentId,
 }: RoomDetailClientProps) {
 
-  const { departmentsCache, setDepartmentsInCache,setDepartmentScheduleInCache,departmentScheduleCache} = useUser()
+  const { departmentsCache, setDepartmentsInCache,setDepartmentScheduleInCache} = useUser()
   const [editOpen, setEditOpen] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null)
   const [loading, setLoading] = useState(false)

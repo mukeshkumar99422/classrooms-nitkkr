@@ -1,6 +1,6 @@
 'use client'
 
-import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
+import { Department, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Download, Calendar, DoorOpen } from 'lucide-react'
 import { toast } from 'sonner'
