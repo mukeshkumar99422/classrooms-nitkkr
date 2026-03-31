@@ -1,47 +1,35 @@
 import { getSessionUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import RoomDetailClient from './room-detail-client'
+import { getCachedDepartment } from '@/lib/supabase/user'
 
 export default async function RoomDetailPage({
   params,
+  searchParams
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; name: string }>
+  searchParams: Promise<{ name?: string }>
+
 }) {
-  const { id } = await params
-  const { supabase, user } = await getSessionUser()
-
-  if (!user) redirect('/login')
-
-  const { data: currentUser } = await supabase
-    .from('departments')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  const { data: room } = await supabase
-    .from('rooms')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (!room) notFound()
+  const { id} = await params;
+  const {name}=await searchParams;
+  const room = { id, name: name || 'Room Details' }
+  
+  const { supabase } = await getSessionUser()
+  const department = await getCachedDepartment()
+  if(department?.is_admin) redirect(`/admin/rooms/`)
 
   const { data: schedules } = await supabase
     .from('schedules')
     .select('*')
     .eq('room_id', id)
-
-  const { data: departments } = await supabase
-    .from('departments')
-    .select('*')
+  if(!schedules) notFound()
 
   return (
     <RoomDetailClient
       room={room}
       schedules={schedules || []}
-      departments={departments || []}
-      currentDepartmentId={user.id}
-      isAdmin={currentUser?.is_admin || false}
+      currentDepartmentId={department?.id || ""}
     />
   )
 }

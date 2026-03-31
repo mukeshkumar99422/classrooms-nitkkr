@@ -1,34 +1,16 @@
 import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MyScheduleClient from './my-schedule-client'
+import { getCachedDepartment } from '@/lib/supabase/user';
 
 export default async function MySchedulePage() {
-  const { supabase, user } = await getSessionUser()
-
-  if (!user) redirect('/login')
-
-  const { data: department } = await supabase
-    .from('departments')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!department) redirect('/login')
-  if (department.is_admin) redirect('/admin/departments')
-
-  // Fetch all schedules for this department
-  const { data: schedules } = await supabase
-    .from('schedules')
-    .select('*')
-    .eq('department_id', user.id)
-
-  const { data: rooms } = await supabase.from('rooms').select('*')
+  const department = await getCachedDepartment();
+  if(!department) redirect('/login');
+  if(department.is_admin) redirect('/admin/rooms');
 
   return (
     <MyScheduleClient
       department={department}
-      schedules={schedules || []}
-      rooms={rooms || []}
     />
   )
 }

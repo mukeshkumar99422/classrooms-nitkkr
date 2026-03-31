@@ -73,7 +73,7 @@ export default function RoomsClient({
   const [isFetching, setIsFetching] = useState<string | null>(null) // Stores ID of room being fetched
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const { scheduleCache, setRoomInCache } = useUser()
+  const { scheduleCache, setRoomScheduleInCache } = useUser()
 
   const nonAdminDepts = departments.filter((d) => !d.is_admin)
 
@@ -119,7 +119,8 @@ export default function RoomsClient({
     if (!selectedRoom) return
 
     const previousRooms = [...optimisticRooms]
-
+    
+    // UI Update
     setOptimisticRooms((prev) => prev.filter((r) => r.id !== selectedRoom.id))
     setDeleteOpen(false)
 
@@ -127,9 +128,11 @@ export default function RoomsClient({
 
     if (result.error) {
       toast.error(result.error)
-      // ROLLBACK: Restore the list if the server failed
       setOptimisticRooms(previousRooms)
     } else {
+      // --- CLEANUP CACHE ---
+      setRoomScheduleInCache(selectedRoom.id, []) // Clear the cache for this deleted room
+      
       toast.success('Room deleted successfully')
       setSelectedRoom(null)
       router.refresh()
@@ -153,7 +156,7 @@ export default function RoomsClient({
     if (result && 'data' in result && result.data) {
       const fetchedData = result.data as Schedule[]
       
-      setRoomInCache(room.id, fetchedData) 
+      setRoomScheduleInCache(room.id, fetchedData) 
       
       setGrid(populateGrid(fetchedData))
       setScheduleOpen(true)
@@ -189,16 +192,20 @@ export default function RoomsClient({
     if (result.error) {
       toast.error(result.error)
     } else {
-      const savedSchedules = scheduleData
+      // --- CACHE UPDATE START ---
+      // Map the local grid data into the Schedule object format
+      const updatedSchedulesForCache = scheduleData
         .filter(s => s.department_id !== null)
-        .map(s => ({ 
-          ...s, 
-          id: Math.random().toString(),
-          room_id: selectedRoom.id 
+        .map(s => ({
+          ...s,
+          id: Math.random().toString(), // Temp ID for the session
+          room_id: selectedRoom.id
         })) as Schedule[]
-      
-      setRoomInCache(selectedRoom.id, savedSchedules)
-      
+
+      // Update the global context immediately
+      setRoomScheduleInCache(selectedRoom.id, updatedSchedulesForCache)
+      // --- CACHE UPDATE END ---
+
       toast.success('Schedule saved and synchronized')
       setScheduleOpen(false)
     }

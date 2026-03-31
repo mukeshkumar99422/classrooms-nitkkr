@@ -80,6 +80,7 @@ export async function updateScheduleDetails(
   return { success: true }
 }
 
+//------------------------------
 export async function getRoomSchedule(roomId: string) {
   const supabase = await createClient()
   
@@ -94,4 +95,23 @@ export async function getRoomSchedule(roomId: string) {
   }
 
   return { data }
+}
+
+//------------------------------
+export async function getDepartmentSchedules(departmentId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('schedules')
+    .select(`
+      *,
+      rooms (
+        id,
+        name
+      )
+    `)
+    .eq('department_id', departmentId)
+
+  if (error) throw new Error(error.message)
+  return data || []
 }

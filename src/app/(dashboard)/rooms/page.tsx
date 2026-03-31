@@ -1,13 +1,11 @@
 import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import RoomsBrowseClient from './rooms-browse-client'
+import { getCachedDepartment } from '@/lib/supabase/user'
 
 export default async function RoomsPage() {
-  const { supabase, user } = await getSessionUser()
+  const department = await getCachedDepartment();
+  if(department?.is_admin) redirect('/admin/rooms');
 
-  if (!user) redirect('/login')
-
-  const { data: rooms } = await supabase.from('rooms').select('*').order('name')
-
-  return <RoomsBrowseClient rooms={rooms || []} />
+  return <RoomsBrowseClient/>
 }

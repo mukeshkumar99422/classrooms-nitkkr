@@ -5,24 +5,62 @@ import { Button } from '@/components/ui/button'
 import { Download, Calendar, DoorOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useUser } from '@/context/user-context'
+import { useEffect,useState,useMemo } from 'react'
+
+import { getAllRooms } from '@/app/actions/rooms'
+import { getDepartmentSchedules } from '@/app/actions/schedules'
+import { Loader2 } from 'lucide-react'
 
 interface MyScheduleClientProps {
   department: Department
-  schedules: Schedule[]
-  rooms: Room[]
 }
 
 export default function MyScheduleClient({
   department,
-  schedules,
-  rooms
 }: MyScheduleClientProps) {
   // Group schedules by room
-  const byRoom = schedules.reduce<Record<string, Schedule[]>>((acc, s) => {
-    if (!acc[s.room_id]) acc[s.room_id] = []
-    acc[s.room_id].push(s)
-    return acc
-  }, {})
+
+  const { roomsCache, departmentScheduleCache ,setRoomsInCache,setDepartmentScheduleInCache} = useUser()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{
+    async function fetchData(){
+      if (roomsCache && departmentScheduleCache[department.id] || departmentScheduleCache[department.id]?.length > 0) {
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      try {
+        if(!roomsCache || roomsCache.length === 0){
+          const rooms = await getAllRooms()
+          setRoomsInCache(rooms)
+        }
+        if(!departmentScheduleCache[department.id] || departmentScheduleCache[department.id].length === 0){
+          const deptSchedules = await getDepartmentSchedules(department.id)
+          setDepartmentScheduleInCache(department.id, deptSchedules)
+        }
+      } catch (error) {
+        console.error("Error syncing schedule:", error)
+        toast.error("Failed to sync your schedule")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+    
+  }, [roomsCache, departmentScheduleCache, setRoomsInCache, setDepartmentScheduleInCache, department.id])
+
+  const rooms = roomsCache || []
+  const schedules = departmentScheduleCache[department.id] || []
+
+  const byRoom = useMemo(() => {
+    return schedules.reduce<Record<string, Schedule[]>>((acc, s) => {
+      if (!acc[s.room_id]) acc[s.room_id] = []
+      acc[s.room_id].push(s)
+      return acc
+    }, {})
+  }, [schedules])
 
   const getRoomName = (roomId: string) => {
     return rooms.find((r) => r.id === roomId)?.name || roomId
@@ -77,6 +115,15 @@ export default function MyScheduleClient({
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Full schedule downloaded')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
+        <p className="text-slate-400">Loading your schedule...</p>
+      </div>
+    )
   }
 
   return (

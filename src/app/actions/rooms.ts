@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+//---------------
 export async function createRoom(formData: FormData) {
   const name = formData.get('name') as string
 
@@ -22,6 +23,7 @@ export async function createRoom(formData: FormData) {
   return { success: true }
 }
 
+//----------------
 export async function deleteRoom(id: string) {
   const supabase = await createClient()
 
@@ -33,4 +35,13 @@ export async function deleteRoom(id: string) {
 
   revalidatePath('/admin/rooms')
   return { success: true }
+}
+
+
+//----------------
+export async function getAllRooms() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('rooms').select('*').order('name')
+  if (error) throw new Error(error.message)
+  return data || []
 }

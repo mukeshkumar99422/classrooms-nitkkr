@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updateScheduleDetails } from '@/app/actions/schedules'
-import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
+import { Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,27 +17,58 @@ import { Download, ArrowLeft, DoorOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useUser } from '@/context/user-context'
+import { getAllDepartments } from '@/app/actions/departments'
+import { useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 
 interface RoomDetailClientProps {
   room: Room
   schedules: Schedule[]
-  departments: Department[]
   currentDepartmentId: string
-  isAdmin: boolean
 }
 
+
+// Main component ----------------------------------------
 export default function RoomDetailClient({
   room,
-  schedules,
-  departments,
+  schedules: initialSchedules,
   currentDepartmentId,
-  isAdmin,
 }: RoomDetailClientProps) {
+
+  const { departmentsCache, setDepartmentsInCache,setDepartmentScheduleInCache,departmentScheduleCache} = useUser()
   const [editOpen, setEditOpen] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingDepartments, setLoadingDepartments] = useState(!departmentsCache)
   const router = useRouter()
 
+  // ------------------------------------------------
+  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules)
+  useEffect(() => {
+    setSchedules(initialSchedules)
+  }, [initialSchedules])
+
+  //-------------------------------------------------
+  //set departments chache on load
+  useEffect(()=>{
+    async function initDepartments() {
+      if (departmentsCache) return // Skip if we already have them
+      try {
+        const data = await getAllDepartments()
+        setDepartmentsInCache(data)
+      } catch (e) {
+        console.error("Failed to fetch departments", e)
+      }
+      finally {        
+        setLoadingDepartments(false)
+      }
+    }
+    initDepartments()
+  }, [departmentsCache, setDepartmentsInCache])
+  const departments = departmentsCache || []
+
+  //----------------------------------------------
   const getDeptName = (deptId: string | null) => {
     if (!deptId) return null
     return departments.find((d) => d.id === deptId)?.name || null
@@ -49,27 +80,51 @@ export default function RoomDetailClient({
     )
   }
 
+  //-----------------------------------------------
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedSchedule) return
+    
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    const result = await updateScheduleDetails(selectedSchedule.id, {
+    const updatedDetails = {
       course: formData.get('course') as string,
       branch: formData.get('branch') as string,
       section: formData.get('section') as string,
       subsection: formData.get('subsection') as string,
       professor_name: formData.get('professor_name') as string,
-    })
+    }
 
-    setLoading(false)
-    if (result.error) {
-      toast.error(result.error)
-    } else {
-      toast.success('Schedule updated successfully')
-      setEditOpen(false)
-      router.refresh()
+    // --- OPTIMISTIC UPDATE START ---
+    const previousSchedules = [...schedules]
+    const optimisticData = schedules.map((s) =>
+      s.id === selectedSchedule.id ? { ...s, ...updatedDetails } : s
+    )
+    setSchedules(optimisticData)
+    setEditOpen(false) 
+    // --- OPTIMISTIC UPDATE END ---
+
+    //UPDATE CACHE
+    setDepartmentScheduleInCache(selectedSchedule.department_id || '', [])
+
+    try {
+      const result = await updateScheduleDetails(selectedSchedule.id, updatedDetails)
+
+      if (result.error) {
+        // Handle specific server-returned errors
+        toast.error(result.error)
+        setSchedules(previousSchedules) // Rollback UI
+      } else {
+        toast.success('Schedule updated successfully')
+        router.refresh() 
+      }
+    } catch (err) {
+      console.error("Update failed:", err)
+      toast.error("Network error: Failed to save changes.")
+      setSchedules(previousSchedules) // Rollback UI
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,13 +146,22 @@ export default function RoomDetailClient({
     toast.success('Schedule downloaded')
   }
 
+  //if departments are still loading, show a loader
+  if(loadingDepartments) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <Link
-            href={isAdmin ? '/admin/rooms' : '/rooms'}
+            href='/rooms'
             className="text-slate-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -121,18 +185,16 @@ export default function RoomDetailClient({
       </div>
 
       {/* Legend */}
-      {!isAdmin && (
-        <div className="flex items-center gap-4 mb-4 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-amber-500/20 border border-amber-500/40" />
-            <span className="text-slate-400">Your Department</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-slate-700/50 border border-slate-600/50" />
-            <span className="text-slate-400">Other Departments</span>
-          </div>
+      <div className="flex items-center gap-4 mb-4 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-amber-500/20 border border-amber-500/40" />
+          <span className="text-slate-400">Your Department</span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-slate-700/50 border border-slate-600/50" />
+          <span className="text-slate-400">Other Departments</span>
+        </div>
+      </div>
 
       {/* Schedule Table */}
       <div className="rounded-xl border border-slate-700/50 overflow-x-auto bg-slate-800/30">
@@ -162,7 +224,7 @@ export default function RoomDetailClient({
                   const slot = getSlot(day, period)
                   const deptName = slot ? getDeptName(slot.department_id) : null
                   const isOwnDept = slot?.department_id === currentDepartmentId
-                  const canEdit = isOwnDept && !isAdmin
+                  const canEdit = isOwnDept
 
                   return (
                     <td
@@ -291,11 +353,23 @@ export default function RoomDetailClient({
                 variant="ghost"
                 onClick={() => setEditOpen(false)}
                 className="text-slate-400 hover:text-white"
+                disabled={loading} // Disable cancel while saving
               >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-500" disabled={loading}>
-                {loading ? 'Saving...' : 'Save'}
+              <Button 
+                type="submit" 
+                className="bg-amber-600 hover:bg-amber-500 min-w-[80px]" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
               </Button>
             </DialogFooter>
           </form>

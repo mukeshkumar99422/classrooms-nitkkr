@@ -3,15 +3,35 @@
 import { useState } from 'react'
 import { Room } from '@/lib/types'
 import { Input } from '@/components/ui/input'
-import { DoorOpen, Search, ArrowRight } from 'lucide-react'
+import { DoorOpen, Search, ArrowRight, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useUser } from '@/context/user-context'
+import { getAllRooms } from '@/app/actions/rooms'
+import { useEffect } from 'react'
 
-interface RoomsBrowseClientProps {
-  rooms: Room[]
-}
 
-export default function RoomsBrowseClient({ rooms }: RoomsBrowseClientProps) {
+export default function RoomsBrowseClient() {
+  const { roomsCache, setRoomsInCache } = useUser()
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(!roomsCache)
+
+  useEffect(() => {
+    async function initRooms() {
+      if (roomsCache) return // Skip if we already have them
+
+      try {
+        const data = await getAllRooms()
+        setRoomsInCache(data)
+      } catch (e) {
+        console.error("Failed to fetch rooms", e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    initRooms()
+  }, [roomsCache, setRoomsInCache])
+
+  const rooms = roomsCache || []
 
   const filteredRooms = rooms.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
@@ -24,6 +44,14 @@ export default function RoomsBrowseClient({ rooms }: RoomsBrowseClientProps) {
     acc[prefix].push(room)
     return acc
   }, {})
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -45,7 +73,7 @@ export default function RoomsBrowseClient({ rooms }: RoomsBrowseClientProps) {
           placeholder="Search rooms by name or building (e.g., M3, E2, LT)..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 max-w-md"
+          className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 max-w-md truncate"
         />
       </div>
 
@@ -64,7 +92,7 @@ export default function RoomsBrowseClient({ rooms }: RoomsBrowseClientProps) {
               {groupRooms.map((room) => (
                 <Link
                   key={room.id}
-                  href={`/rooms/${room.id}`}
+                  href={`/rooms/${room.id}?name=${encodeURIComponent(room.name)}`}
                   className="group bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">

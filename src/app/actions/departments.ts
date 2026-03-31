@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/gmail'
 
@@ -124,4 +124,12 @@ export async function deleteDepartment(id: string) {
 
   revalidatePath('/admin/departments')
   return { success: true }
+}
+
+//----------------
+export async function getAllDepartments() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('departments').select('*').order('name');
+  if (error) throw new Error(error.message);
+  return data || [];
 }
