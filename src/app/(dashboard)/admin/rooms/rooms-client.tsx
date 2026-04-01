@@ -162,25 +162,37 @@ export default function RoomsClient() {
   const openScheduleEditor = async (room: Room) => {
     setSelectedRoom(room)
     
+    // 1. Check Cache First
     if (scheduleCache[room.id]) {
       setGrid(populateGrid(scheduleCache[room.id]))
       setScheduleOpen(true)
       return
     }
 
+    // 2. Fetch from DB
     setIsFetching(room.id)
-    const result = await getRoomSchedule(room.id)
-    setIsFetching(null)
-
-    if (result && 'data' in result && result.data) {
-      const fetchedData = result.data as Schedule[]
+    try {
+      const result = await getRoomSchedule(room.id)
       
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+
+      const fetchedData = (result.data || []) as Schedule[]
+      
+      // 3. Update Global Context Cache
       setRoomScheduleInCache(room.id, fetchedData) 
       
-      setGrid(populateGrid(fetchedData))
+      // 4. Force Reset Grid before populating to avoid "ghost data" from previous rooms
+      const newGrid = populateGrid(fetchedData)
+      setGrid(newGrid)
+      
       setScheduleOpen(true)
-    } else if (result && 'error' in result) {
-      toast.error(result.error as string)
+    } catch (err) {
+      toast.error("An unexpected error occurred")
+    } finally {
+      setIsFetching(null)
     }
   }
 
@@ -312,8 +324,9 @@ export default function RoomsClient() {
 
   if(dataFethingLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 text-slate-500 animate-spin" />
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
+        <p className="text-slate-400">Loading Rooms...</p>
       </div>
     )
   }

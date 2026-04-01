@@ -86,7 +86,7 @@ export async function getRoomSchedule(roomId: string) {
   
   const { data, error } = await supabase
     .from('schedules')
-    .select('day_of_week, period_number, department_id')
+    .select('*')
     .eq('room_id', roomId)
 
   if (error) {
@@ -94,7 +94,7 @@ export async function getRoomSchedule(roomId: string) {
     return { error: 'Failed to fetch schedule' }
   }
 
-  return { data }
+  return { data: data || [] }
 }
 
 //------------------------------
