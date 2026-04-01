@@ -32,13 +32,13 @@ export function AppSidebar() {
   const departmentName = department?.name || null
 
   const handleLogout = async () => {
-    clearCache()
     setMobileOpen(false)
 
     router.replace('/login')
 
     supabase.auth.signOut()
     .then(() => {
+      clearCache()
       router.refresh() 
     })
     .catch((error) => {
