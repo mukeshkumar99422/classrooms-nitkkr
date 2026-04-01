@@ -71,7 +71,19 @@ export function UserProvider({
   }
 
   return (
-    <UserContext.Provider value={{ department, scheduleCache,setScheduleCache, setRoomScheduleInCache, roomsCache, setRoomsInCache, departmentsCache, setDepartmentsInCache, updateScheduleInCache, departmentScheduleCache, setDepartmentScheduleInCache, clearCache }}>
+    <UserContext.Provider value={{ department, 
+    scheduleCache,
+    setScheduleCache, 
+    setRoomScheduleInCache, 
+    roomsCache, 
+    setRoomsInCache, 
+    departmentsCache, 
+    setDepartmentsInCache, 
+    updateScheduleInCache, 
+    departmentScheduleCache, 
+    setDepartmentScheduleInCache, 
+    clearCache,
+   }}>
       {children}
     </UserContext.Provider>
   )

@@ -27,7 +27,7 @@ export function AppSidebar() {
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const { department,clearCache } = useUser()
+  const { department } = useUser()
   const isAdmin = department?.is_admin || false
   const departmentName = department?.name || null
 
@@ -38,13 +38,14 @@ export function AppSidebar() {
 
     supabase.auth.signOut()
     .then(() => {
-      clearCache()
+      toast.success('Logged out successfully')
       router.refresh() 
     })
     .catch((error) => {
       console.error('Background logout error:', error)
       toast.error('Failed to log out. Please try again.')}
-    )    
+    )
+
   }
 
   const adminLinks = [
