@@ -27,7 +27,7 @@ export function AppSidebar() {
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const { department } = useUser()
+  const { department,clearCache } = useUser()
   const isAdmin = department?.is_admin || false
   const departmentName = department?.name || null
 
@@ -36,15 +36,25 @@ export function AppSidebar() {
 
     router.replace('/login')
 
-    supabase.auth.signOut()
-    .then(() => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Logout error:', error)
+      toast.error('Failed to log out. Please try again.')
+    } else {
       toast.success('Logged out successfully')
-      router.refresh() 
-    })
-    .catch((error) => {
-      console.error('Background logout error:', error)
-      toast.error('Failed to log out. Please try again.')}
-    )
+    }
+
+    clearCache();
+
+    // supabase.auth.signOut()
+    // .then(() => {
+    //   toast.success('Logged out successfully')
+    //   router.refresh() 
+    // })
+    // .catch((error) => {
+    //   console.error('Background logout error:', error)
+    //   toast.error('Failed to log out. Please try again.')}
+    // )
 
   }
 
