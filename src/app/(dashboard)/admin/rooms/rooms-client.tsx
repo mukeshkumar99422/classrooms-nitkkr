@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { createRoom, deleteRoom } from '@/app/actions/rooms'
+import { createRoom, deleteRoom, getAllRooms } from '@/app/actions/rooms'
 import { bulkUpsertSchedules, getRoomSchedule } from '@/app/actions/schedules'
-import { Department, Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
+import { Room, Schedule, DAYS_OF_WEEK, PERIODS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,12 +26,7 @@ import { Plus, Trash2, DoorOpen, Upload, Grid3X3, Search, Calendar, Pencil, Load
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/context/user-context'
-
-interface RoomsClientProps {
-  rooms: Room[]
-  departments: Department[]
-  initialScheduleCounts?: Record<string, number> // Optional: Pass counts from server for better UX
-}
+import { getAllDepartments } from '@/app/actions/departments'
 
 type ScheduleGrid = Record<string, Record<number, string | null>>
 
@@ -57,11 +52,7 @@ function populateGrid(schedules: Schedule[]): ScheduleGrid {
 }
 
 // Main component -----------------------------------------------------------------------------
-export default function RoomsClient({
-  rooms,
-  departments,
-  initialScheduleCounts = {},
-}: RoomsClientProps) {
+export default function RoomsClient() {
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -73,21 +64,49 @@ export default function RoomsClient({
   const [isFetching, setIsFetching] = useState<string | null>(null) // Stores ID of room being fetched
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const { scheduleCache, setRoomScheduleInCache } = useUser()
-
+  const { scheduleCache, setRoomScheduleInCache,departmentsCache,setDepartmentsInCache, roomsCache, setRoomsInCache } = useUser()
+  
+  const departments = departmentsCache || []
   const nonAdminDepts = departments.filter((d) => !d.is_admin)
-
-
-  //optimistic ui change
-  const [optimisticRooms, setOptimisticRooms] = useState<Room[]>(rooms)
-
-  useEffect(() => {
-    setOptimisticRooms(rooms)
-  }, [rooms])
-
+  const [optimisticRooms, setOptimisticRooms] = useState<Room[]>(roomsCache || [])
   const filteredRooms = optimisticRooms.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
   )
+
+  const [dataFethingLoading, setDataFetchingLoading] = useState(!departmentsCache || !roomsCache)
+
+  useEffect(() => {
+    async function syncAdminData() {
+      if (roomsCache && departmentsCache) {
+        setOptimisticRooms(roomsCache)
+        setDataFetchingLoading(false)
+        return
+      }
+
+      setDataFetchingLoading(true)
+      try {
+        const [roomsData, deptsData] = await Promise.all([
+          !roomsCache ? getAllRooms() : Promise.resolve(roomsCache),
+          !departmentsCache ? getAllDepartments() : Promise.resolve(departmentsCache)
+        ])
+
+        setRoomsInCache(roomsData)
+        setDepartmentsInCache(deptsData)
+
+        setOptimisticRooms(roomsData)
+      } catch (error) {
+        console.error("Sync error:", error)
+        toast.error("Failed to synchronize admin data")
+      } finally {
+        setDataFetchingLoading(false)
+      }
+    }
+
+    syncAdminData()
+  }, [roomsCache, departmentsCache, setRoomsInCache, setDepartmentsInCache])
+  
+
+  
 
   //-----------
   const handleAdd = async (formData: FormData) => {
@@ -99,15 +118,16 @@ export default function RoomsClient({
       name: name,
     }
 
-    setOptimisticRooms((prev) => [...prev, tempRoom])
+    const prevRooms = [...optimisticRooms]
+    setRoomsInCache([...prevRooms, tempRoom])
     setAddOpen(false)
 
     const result = await createRoom(formData)
 
     if (result.error) {
       toast.error(result.error)
-      // ROLLBACK: Reset to the official rooms prop from server
-      setOptimisticRooms(rooms)
+      // ROLLBACK
+      setRoomsInCache(prevRooms)
     } else {
       toast.success('Room created successfully')
       router.refresh() // This will eventually update 'rooms' prop and our useEffect
@@ -117,21 +137,20 @@ export default function RoomsClient({
   //-----------
   const handleDelete = async () => {
     if (!selectedRoom) return
-
-    const previousRooms = [...optimisticRooms]
     
     // UI Update
-    setOptimisticRooms((prev) => prev.filter((r) => r.id !== selectedRoom.id))
+    const prevRooms = [...optimisticRooms];
+    setRoomsInCache(prevRooms.filter((r) => r.id !== selectedRoom.id))
     setDeleteOpen(false)
 
     const result = await deleteRoom(selectedRoom.id)
 
     if (result.error) {
       toast.error(result.error)
-      setOptimisticRooms(previousRooms)
+      setRoomsInCache(prevRooms) // Rollback
     } else {
       // --- CLEANUP CACHE ---
-      setRoomScheduleInCache(selectedRoom.id, []) // Clear the cache for this deleted room
+      setRoomScheduleInCache(selectedRoom.id, [])
       
       toast.success('Room deleted successfully')
       setSelectedRoom(null)
@@ -167,49 +186,59 @@ export default function RoomsClient({
 
   //-----------
   const handleSaveSchedule = async () => {
-    if (!selectedRoom) return
-    setLoading(true)
+    if (!selectedRoom) return;
+    setLoading(true);
 
-    const scheduleData: Array<{
-      day_of_week: string
-      period_number: number
-      department_id: string | null
-    }> = []
+    const scheduleData = DAYS_OF_WEEK.flatMap((day) =>
+      PERIODS.map((period) => ({
+        day_of_week: day,
+        period_number: period,
+        department_id: grid[day][period] || null,
+      }))
+    );
 
-    DAYS_OF_WEEK.forEach((day) => {
-      PERIODS.forEach((period) => {
-        scheduleData.push({
-          day_of_week: day,
-          period_number: period,
-          department_id: grid[day][period] || null,
-        })
-      })
-    })
-
-    const result = await bulkUpsertSchedules(selectedRoom.id, scheduleData)
-    setLoading(false)
+    const result = await bulkUpsertSchedules(selectedRoom.id, scheduleData);
 
     if (result.error) {
-      toast.error(result.error)
-    } else {
-      // --- CACHE UPDATE START ---
-      // Map the local grid data into the Schedule object format
-      const updatedSchedulesForCache = scheduleData
-        .filter(s => s.department_id !== null)
-        .map(s => ({
-          ...s,
-          id: Math.random().toString(), // Temp ID for the session
-          room_id: selectedRoom.id
-        })) as Schedule[]
-
-      // Update the global context immediately
-      setRoomScheduleInCache(selectedRoom.id, updatedSchedulesForCache)
-      // --- CACHE UPDATE END ---
-
-      toast.success('Schedule saved and synchronized')
-      setScheduleOpen(false)
+      toast.error(result.error);
+      setLoading(false);
+      return;
     }
-  }
+
+    // CACHE UPDATE LOGIC
+    const existingRoomSchedules = scheduleCache[selectedRoom.id] || [];
+
+    const updatedSchedulesForCache = scheduleData
+      .filter((s) => s.department_id !== null)
+      .map((newSlot) => {
+        const existingSlot = existingRoomSchedules.find(
+          (old) =>
+            old.day_of_week === newSlot.day_of_week &&
+            old.period_number === newSlot.period_number
+        );
+
+        const isSameDept = existingSlot?.department_id === newSlot.department_id;
+
+        return {
+          ...newSlot,
+          id: existingSlot?.id || Math.random().toString(),
+          room_id: selectedRoom.id,
+          course: isSameDept ? existingSlot?.course : null,
+          branch: isSameDept ? existingSlot?.branch : null,
+          section: isSameDept ? existingSlot?.section : null,
+          subsection: isSameDept ? existingSlot?.subsection : null,
+          professor_name: isSameDept ? existingSlot?.professor_name : null,
+        };
+      }) as Schedule[];
+
+    setRoomScheduleInCache(selectedRoom.id, updatedSchedulesForCache);
+
+    setLoading(false);
+    toast.success('Schedule saved and synchronized');
+    setScheduleOpen(false);
+    
+    router.refresh();
+  };
 
   //-----------
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,7 +307,15 @@ export default function RoomsClient({
   //-----------
   const getRoomScheduleCount = (roomId: string) => {
     if (scheduleCache[roomId]) return scheduleCache[roomId].length
-    return initialScheduleCounts[roomId] || 0
+    return -1
+  }
+
+  if(dataFethingLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 text-slate-500 animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -361,7 +398,7 @@ export default function RoomsClient({
                   </div>
                 </div>
                 <h3 className="text-white font-bold text-lg">{room.name}</h3>
-                <p className="text-slate-500 text-sm mt-1">{!scheduleCache[room.id]? 'click to view schedule' : (slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet')}</p>
+                <p className="text-slate-500 text-sm mt-1">{slotCount === -1 ? 'click to view schedule' : (slotCount > 0 ? `${slotCount} slots assigned` : 'No schedule yet')}</p>
                 <Button
                   size="sm" variant="ghost" className="mt-3 text-amber-400 hover:text-amber-300 w-full justify-start px-0"
                   disabled={currentlyFetching}

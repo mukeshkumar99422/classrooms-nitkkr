@@ -5,7 +5,6 @@ import { Department, Room, Schedule } from '@/lib/types'
 
 interface UserContextType {
   department: Department | null
-  // The Cache: Key is roomId, Value is array of Schedules
   scheduleCache: Record<string, Schedule[]>
   setRoomScheduleInCache: (roomId: string, schedules: Schedule[]) => void
   setScheduleCache: (cache: Record<string, Schedule[]>) => void
@@ -19,6 +18,8 @@ interface UserContextType {
 
   departmentScheduleCache: Record<string, Schedule[]>
   setDepartmentScheduleInCache: (departmentId: string, schedules: Schedule[]) => void
+
+  clearCache: () => void
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -53,16 +54,24 @@ export function UserProvider({
     setDepartmentScheduleCache((prev) => ({ ...prev, [departmentId]: schedules || [] }))
   }
 
-  //2. cache all rooms at once
+  //3. cache all rooms at once
   const [roomsCache, setRoomsCache] = useState<Room[] | null>(null)
   const setRoomsInCache = (rooms: Room[]) => setRoomsCache(rooms)
 
-  //3. departments cache
+  //4. departments cache
   const [departmentsCache, setDepartmentsCache] = useState<Department[] | null>(null)
   const setDepartmentsInCache = (departments: Department[]) => setDepartmentsCache(departments)
 
+  // --- CLEANUP FUNCTION ---
+  const clearCache = () => {
+    setScheduleCache({})
+    setDepartmentScheduleCache({})
+    setRoomsCache(null)
+    setDepartmentsCache(null)
+  }
+
   return (
-    <UserContext.Provider value={{ department, scheduleCache,setScheduleCache, setRoomScheduleInCache, roomsCache, setRoomsInCache, departmentsCache, setDepartmentsInCache, updateScheduleInCache, departmentScheduleCache, setDepartmentScheduleInCache }}>
+    <UserContext.Provider value={{ department, scheduleCache,setScheduleCache, setRoomScheduleInCache, roomsCache, setRoomsInCache, departmentsCache, setDepartmentsInCache, updateScheduleInCache, departmentScheduleCache, setDepartmentScheduleInCache, clearCache }}>
       {children}
     </UserContext.Provider>
   )

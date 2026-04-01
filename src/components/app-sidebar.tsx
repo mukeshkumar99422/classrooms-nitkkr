@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
 import {useUser} from '@/context/user-context'
+import { toast } from 'sonner'
 
 
 // main component --------------------------
@@ -26,14 +27,24 @@ export function AppSidebar() {
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const { department } = useUser()
+  const { department,clearCache } = useUser()
   const isAdmin = department?.is_admin || false
   const departmentName = department?.name || null
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    try {
+      router.push('/login')
+
+      // Clear the Global Context Cache 
+      clearCache()
+      
+      await supabase.auth.signOut()
+
+      router.refresh()
+    } catch (error) {
+      console.error('Error logging out:', error)
+      toast.error('Logout failed')
+    }
   }
 
   const adminLinks = [

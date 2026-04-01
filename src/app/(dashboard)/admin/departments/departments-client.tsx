@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createDepartment, updateDepartment, deleteDepartment } from '@/app/actions/departments'
+import { createDepartment, updateDepartment, deleteDepartment, getAllDepartments } from '@/app/actions/departments'
 import { Department } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,17 +23,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Pencil, Trash2, Building2, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Building2, Search, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/context/user-context'
 
-interface DepartmentsClientProps {
-  departments: Department[]
-}
 
-export default function DepartmentsClient({ departments }: DepartmentsClientProps) {
-  const {setScheduleCache} = useUser()
+export default function DepartmentsClient() {
+  const {setScheduleCache,departmentsCache,setDepartmentsInCache} = useUser()
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -42,7 +39,30 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
   const [search, setSearch] = useState('')
   const router = useRouter()
 
-  const [optimisticDepts, setOptimisticDepts] = useState(departments);
+  const [optimisticDepts, setOptimisticDepts] = useState<Department[]>(departmentsCache || [])
+  const [loadingDepts, setLoadingDepts] = useState(!departmentsCache)
+  useEffect(()=>{
+    const fetchInitialData = async () =>{
+      if(departmentsCache){
+        setOptimisticDepts(departmentsCache)
+        setLoadingDepts(false)
+        return
+      }
+
+      setLoadingDepts(true)
+      try {
+        const data = await getAllDepartments()
+        setDepartmentsInCache(data || [])
+        setOptimisticDepts(data || [])
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+        toast.error('Failed to load departments.')
+      } finally {
+        setLoadingDepts(false)
+      }
+    }
+    fetchInitialData();
+  }, [departmentsCache]);
 
   const filteredDepts = optimisticDepts.filter(
     (d) =>
@@ -52,79 +72,97 @@ export default function DepartmentsClient({ departments }: DepartmentsClientProp
   )
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-
-    // Create temporary optimistic object
-    const temporaryDept: Department = {
-      id: Math.random().toString(), // Temp ID until server responds
-      name,
-      email,
-      is_admin: false,
-    };
-
-    // 1. Update UI instantly
-    setOptimisticDepts((prev) => [temporaryDept, ...prev]);
-    setAddOpen(false);
-
-    // 2. Perform background server action
-    const result = await createDepartment(formData);
-
-    if (result.error) {
-      toast.error(result.error);
-      // Rollback: Reset to official props if failed
-      setOptimisticDepts(departments);
-    } else {
-      toast.success('Department created successfully');
-      router.refresh(); // Syncs official data
-    }
-  };
-
-  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     const formData = new FormData(e.currentTarget)
-    const result = await updateDepartment(formData)
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+
+    const temporaryDept: Department = {
+      id: Math.random().toString(),
+      name,
+      email,
+      is_admin: false,
+    }
+
+    // Optimistic Update
+    const previousDepts = [...optimisticDepts]
+    setDepartmentsInCache([temporaryDept, ...previousDepts]);
+    setAddOpen(false)
+
+    const result = await createDepartment(formData)
     setLoading(false)
+
     if (result.error) {
       toast.error(result.error)
+      setDepartmentsInCache(previousDepts); // Rollback
+    } else {
+      toast.success('Department created successfully')
+      router.refresh()
+    }
+  }
+
+  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedDept) return
+    
+    setLoading(true)
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+
+    // Optimistic Update
+    const previousDepts = [...optimisticDepts]
+    const updatedList = previousDepts.map(d => 
+      d.id === selectedDept.id ? { ...d, name, email } : d
+    );
+    setDepartmentsInCache(updatedList);
+    setEditOpen(false)
+
+    const result = await updateDepartment(formData)
+    setLoading(false)
+
+    if (result.error) {
+      toast.error(result.error)
+      setDepartmentsInCache(previousDepts); // Rollback
     } else {
       setScheduleCache({})
       toast.success('Department updated successfully')
-      setEditOpen(false)
-      setSelectedDept(null)
       router.refresh()
     }
   }
 
   const handleDelete = async () => {
-    if (!selectedDept) return;
+    if (!selectedDept) return
+    setLoading(true)
 
-    // 1. Update UI instantly
-    const previousDepts = [...optimisticDepts];
-    setOptimisticDepts((prev) => prev.filter((d) => d.id !== selectedDept.id));
-    setDeleteOpen(false);
+    const previousDepts = [...optimisticDepts]
+    const updatedList = previousDepts.filter((d) => d.id !== selectedDept.id);
+    setDepartmentsInCache(updatedList);
+    setDeleteOpen(false)
 
-    // 2. Background server action
-    const result = await deleteDepartment(selectedDept.id);
+    const result = await deleteDepartment(selectedDept.id)
+    setLoading(false)
 
     if (result.error) {
-      toast.error(result.error);
-      // Rollback on failure
-      setOptimisticDepts(previousDepts);
+      toast.error(result.error)
+      setDepartmentsInCache(previousDepts); // Rollback
     } else {
-      setScheduleCache({});
-      toast.success('Department deleted successfully');
-      setSelectedDept(null);
-      router.refresh();
+      setScheduleCache({})
+      toast.success('Department deleted successfully')
+      setSelectedDept(null)
+      router.refresh()
     }
-  };
+  }
 
-  useEffect(() => {
-    setOptimisticDepts(departments);
-  }, [departments]);
+  if (loadingDepts) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
+        <p className="text-slate-400">Loading departments...</p>
+      </div>
+    )
+  }
 
   return (
     <div>
