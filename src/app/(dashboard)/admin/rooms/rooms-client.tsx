@@ -190,7 +190,8 @@ export default function RoomsClient() {
       
       setScheduleOpen(true)
     } catch (err) {
-      toast.error("An unexpected error occurred")
+      console.error("Error fetching schedule:", err)
+      toast.error("Could not load schedule for this room")
     } finally {
       setIsFetching(null)
     }
