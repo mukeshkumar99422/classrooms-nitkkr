@@ -32,19 +32,19 @@ export function AppSidebar() {
   const departmentName = department?.name || null
 
   const handleLogout = async () => {
-    try {
-      router.push('/login')
+    clearCache()
+    setMobileOpen(false)
 
-      // Clear the Global Context Cache 
-      clearCache()
-      
-      await supabase.auth.signOut()
+    router.replace('/login')
 
-      router.refresh()
-    } catch (error) {
-      console.error('Error logging out:', error)
-      toast.error('Logout failed')
-    }
+    supabase.auth.signOut()
+    .then(() => {
+      router.refresh() 
+    })
+    .catch((error) => {
+      console.error('Background logout error:', error)
+      toast.error('Failed to log out. Please try again.')}
+    )    
   }
 
   const adminLinks = [
