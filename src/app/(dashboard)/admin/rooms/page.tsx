@@ -1,4 +1,3 @@
-import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import RoomsClient from './rooms-client'
 import { getCachedDepartment } from '@/lib/supabase/user'

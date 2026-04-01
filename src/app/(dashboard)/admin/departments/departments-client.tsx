@@ -62,7 +62,7 @@ export default function DepartmentsClient() {
       }
     }
     fetchInitialData();
-  }, [departmentsCache]);
+  }, [departmentsCache, setDepartmentsInCache]);
 
   const filteredDepts = optimisticDepts.filter(
     (d) =>
