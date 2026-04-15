@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="flex min-h-screen bg-background">
       <Sidebar isAdmin={false} deptName={dept.name} />
       <main className="lg:ml-64 flex-1 overflow-auto">
-        <div className="p-6 lg:p-8 pt-16 lg:pt-8 max-w-7xl mx-auto animate-fade-in">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
           {children}
         </div>
       </main>
