@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Dark theme matching the login screenshot */
+    --background: 222 20% 13%;
+    --foreground: 210 20% 92%;
+    --card: 222 18% 17%;
+    --card-foreground: 210 20% 92%;
+    --popover: 222 18% 17%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 217 80% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 16% 22%;
+    --secondary-foreground: 210 20% 85%;
+    --muted: 222 16% 20%;
+    --muted-foreground: 215 14% 55%;
+    --accent: 222 16% 22%;
+    --accent-foreground: 210 20% 92%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 14% 24%;
+    --input: 222 14% 22%;
+    --ring: 217 80% 58%;
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-bg: 222 22% 11%;
+    --sidebar-border: 222 14% 18%;
+  }
+
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .sidebar-bg {
+    background-color: hsl(var(--sidebar-bg));
+    border-color: hsl(var(--sidebar-border));
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.22s ease-out both;
+}
