@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Sidebar from "@/components/shared/Sidebar";
+import dynamic from "next/dynamic";
 import { Toaster } from "@/components/ui/index";
+
+// Dynamic import prevents useContext/usePathname hydration mismatch
+const Sidebar = dynamic(() => import("@/components/shared/Sidebar"), { ssr: false });
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();

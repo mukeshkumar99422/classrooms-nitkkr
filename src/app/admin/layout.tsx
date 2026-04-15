@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Sidebar from "@/components/shared/Sidebar";
+import dynamic from "next/dynamic";
 import { Toaster } from "@/components/ui/index";
+
+// Dynamic import prevents useContext/usePathname hydration mismatch
+const Sidebar = dynamic(() => import("@/components/shared/Sidebar"), { ssr: false });
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
@@ -16,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar isAdmin={true} deptName={dept.name} />
-      <main className="flex-1 overflow-auto lg:pl-0 pl-0">
+      <main className="flex-1 overflow-auto">
         <div className="p-6 lg:p-8 pt-16 lg:pt-8 max-w-7xl mx-auto animate-fade-in">
           {children}
         </div>
