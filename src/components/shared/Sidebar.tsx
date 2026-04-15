@@ -116,7 +116,7 @@ export default function Sidebar({ isAdmin, deptName }: SidebarProps) {
   return (
     <>
       {/* ── Desktop sidebar ───────────────────────────────── */}
-      <aside className="hidden lg:flex flex-col w-64 min-h-screen flex-shrink-0 sidebar-bg"
+      <aside className="hidden lg:fixed lg:flex flex-col w-64 h-screen flex-shrink-0 sidebar-bg left-0 top-0 z-30"
         style={{ borderRight: "1px solid hsl(222, 14%, 18%)" }}>
         <NavContent />
       </aside>

@@ -31,12 +31,15 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
   const [form, setForm] = useState<EditForm>({ course: "", branch: "", section: "", subsection: "", professor_name: "" });
 
+  // Open edit dialog for a schedule slot
   const openEdit = (s: Schedule) => {
     setEditSchedule(s);
     setForm({ course: s.course ?? "", branch: s.branch ?? "", section: s.section ?? "", subsection: s.subsection ?? "", professor_name: s.professor_name ?? "" });
     setEditOpen(true);
   };
 
+
+  // Save edits to a schedule slot
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editSchedule) return;
@@ -61,22 +64,38 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
     } finally { setSaving(false); }
   };
 
+
+  // Generate and download Excel of the schedule
   const handleDownload = async () => {
     const exportData: any = {};
+
     for (const day of DAYS) {
       exportData[day] = {};
       for (const p of PERIODS) {
         const cell = cellMap[day][p];
         if (cell) {
-          const parts = [cell.departments?.name, cell.course, cell.branch, cell.section, cell.subsection, cell.professor_name].filter(Boolean);
-          exportData[day][p] = { content: parts.join(" | ") };
+          const parts = [
+            cell.departments?.name,
+            cell.course,
+            cell.branch && `${cell.branch}-${cell.section}${cell.subsection ? `-${cell.subsection}` : ""}`,
+            cell.professor_name
+          ].filter(Boolean);
+          exportData[day][p] = { 
+            content: parts.join(" \n")
+          };
         }
       }
     }
+
     const { generateScheduleExcel } = await import("@/lib/excel");
     const blob = generateScheduleExcel(room.name, exportData);
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${room.name}_schedule.xlsx`; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${room.name}_schedule.xlsx`;
+    a.click();
+
     URL.revokeObjectURL(url);
   };
 
@@ -132,9 +151,9 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
                             <p className={`text-xs font-semibold text-center leading-tight ${isOwn ? "text-white" : "text-gray-800"}`}>
                               {cell.departments?.name}
                             </p>
-                            {(cell.course || cell.branch || cell.section) && (
+                            {(cell.course || cell.branch || cell.section || cell.subsection) && (
                               <p className={`text-[10px] text-center mt-0.5 leading-tight ${isOwn ? "text-blue-200" : "text-gray-500"}`}>
-                                {[cell.course, cell.branch, cell.section].filter(Boolean).join(" · ")}
+                                {[cell.course, cell.branch, cell.section, cell.subsection].filter(Boolean).join(" · ")}
                               </p>
                             )}
                             {cell.professor_name && (

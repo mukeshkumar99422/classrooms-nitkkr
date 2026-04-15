@@ -48,12 +48,14 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
   const deptColorMap: Record<string, string> = {};
   departments.forEach((d, i) => { deptColorMap[d.id] = COLORS[i % COLORS.length]; });
 
+  // Open edit dialog for a specific cell
   const openEdit = (day: string, period: number) => {
     setEditCell({ day, period });
     setSelectedDept(cellMap[day][period]?.department_id ?? "none");
     setEditOpen(true);
   };
 
+  // Save changes to a schedule cell
   const handleSaveCell = async () => {
     if (!editCell) return;
     setSaving(true);
@@ -86,6 +88,7 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
     } finally { setSaving(false); }
   };
 
+  //upload excel file and update schedule
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -107,6 +110,7 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
     } finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
+  // download template for schedule upload
   const handleDownloadTemplate = async () => {
     const { generateTemplateExcel } = await import("@/lib/excel");
     const blob = generateTemplateExcel();
@@ -115,22 +119,37 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
     URL.revokeObjectURL(url);
   };
 
+  // download Excel of the current schedule
   const handleExport = async () => {
     const exportData: any = {};
+
     for (const day of DAYS) {
       exportData[day] = {};
       for (const p of PERIODS) {
         const cell = cellMap[day][p];
         if (cell) {
-          const parts = [cell.departments?.name, cell.course, cell.branch, cell.section, cell.subsection, cell.professor_name].filter(Boolean);
-          exportData[day][p] = { content: parts.join(" | ") };
+          const parts = [
+            cell.departments?.name,
+            cell.course,
+            cell.branch && `${cell.branch}-${cell.section}${cell.subsection ? `-${cell.subsection}` : ""}`,
+            cell.professor_name
+          ].filter(Boolean);
+          exportData[day][p] = { 
+            content: parts.join(" \n")
+          };
         }
       }
     }
+
     const { generateScheduleExcel } = await import("@/lib/excel");
     const blob = generateScheduleExcel(room.name, exportData);
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${room.name}_schedule.xlsx`; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${room.name}_schedule.xlsx`;
+    a.click();
+
     URL.revokeObjectURL(url);
   };
 
@@ -195,8 +214,8 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
                         {cell?.department_id ? (
                           <div className="text-center">
                             <p className="text-xs font-semibold leading-tight">{cell.departments?.name}</p>
-                            {(cell.course || cell.section) && (
-                              <p className="text-[10px] opacity-70 mt-0.5">{[cell.course, cell.section].filter(Boolean).join(" · ")}</p>
+                            {(cell.course || cell.section || cell.branch || cell.subsection) && (
+                              <p className="text-[10px] opacity-70 mt-0.5">{[cell.course, cell.branch, cell.section, cell.subsection].filter(Boolean).join(" · ")}</p>
                             )}
                           </div>
                         ) : (

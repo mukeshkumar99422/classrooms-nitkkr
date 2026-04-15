@@ -37,18 +37,18 @@ export default function ForgotPasswordPage() {
           <div className="rounded-2xl overflow-hidden shadow-2xl"
             style={{ background: "hsl(222, 20%, 16%)", border: "1px solid hsl(222, 14%, 22%)" }}>
 
-            <div className="px-8 pt-8 pb-6 text-center" style={{ background: "hsl(222, 28%, 22%)" }}>
+            <div className="px-8 pt-6 pb-6 text-center" style={{ background: "hsl(222, 28%, 22%)" }}>
               <div className="mx-auto flex items-center justify-center bg-white p-3 rounded-full w-[88px] h-[88px] mb-4 shadow-lg">
                 <img src="/logo.png" alt="NIT Kurukshetra" width={64} height={64} className="object-contain" />
               </div>
               <h1 className="text-xl font-bold text-white">Classrooms Scheduler</h1>
             </div>
 
-            <div className="px-8 py-7">
+            <div className="px-8 py-4">
               {sent ? (
                 <div className="text-center py-4">
                   <MailCheck className="h-12 w-12 mx-auto mb-4" style={{ color: "hsl(142, 70%, 50%)" }} />
-                  <h2 className="text-lg font-semibold text-white mb-2">Check your email</h2>
+                  <h2 className="text-lg font-semibold text-white mb-1">Check your email</h2>
                   <p className="text-sm mb-6" style={{ color: "hsl(215, 14%, 55%)" }}>
                     Reset link sent to <strong className="text-white">{email}</strong>. Expires in 1 hour.
                   </p>
@@ -60,8 +60,8 @@ export default function ForgotPasswordPage() {
                 </div>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold text-white mb-1 text-center">Reset Password</h2>
-                  <p className="text-sm mb-6 text-center" style={{ color: "hsl(215, 14%, 55%)" }}>
+                  <h2 className="text-lg font-semibold text-white text-center">Reset Password</h2>
+                  <p className="text-sm mb-4 text-center" style={{ color: "hsl(215, 14%, 55%)" }}>
                     Enter your email and we'll send a reset link.
                   </p>
                   <form onSubmit={handleSubmit} className="space-y-5">

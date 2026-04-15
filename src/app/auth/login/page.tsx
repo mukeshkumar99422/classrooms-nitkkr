@@ -32,14 +32,14 @@ export default function LoginPage() {
     <>
       <Toaster />
       <AuthBackground>
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen  flex items-center justify-center p-4">
 
         <div className="w-full max-w-sm">
           <div className="rounded-2xl overflow-hidden shadow-2xl"
             style={{ background: "hsl(222, 20%, 16%)", border: "1px solid hsl(222, 14%, 22%)" }}>
 
             {/* Header */}
-            <div className="px-8 pt-8 pb-7 text-center"
+            <div className="px-8 pt-6 pb-6 text-center"
               style={{ background: "hsl(222, 28%, 22%)" }}>
               <div className="mx-auto flex items-center justify-center bg-white p-3 rounded-full w-[88px] h-[88px] mb-4 shadow-lg">
                 <img src="/logo.png" alt="NIT Kurukshetra" width={64} height={64}
@@ -49,11 +49,11 @@ export default function LoginPage() {
             </div>
 
             {/* Form */}
-            <div className="px-8 py-7">
-              <h2 className="text-lg font-semibold text-white mb-1 text-center">Sign In</h2>
-              <p className="text-sm mb-6 text-center" style={{ color: "hsl(215, 14%, 55%)" }}>Login to your account</p>
+            <div className="px-8 py-4">
+              <h2 className="text-lg font-semibold text-white text-center">Sign In</h2>
+              <p className="text-sm mb-4 text-center" style={{ color: "hsl(215, 14%, 55%)" }}>Login to your account</p>
 
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-sm font-medium" style={{ color: "hsl(210, 20%, 82%)" }}>
                     Email Address
@@ -74,7 +74,7 @@ export default function LoginPage() {
                       value={password} onChange={e => setPassword(e.target.value)} required
                       className="bg-transparent border-[hsl(222,14%,28%)] text-white placeholder:text-[hsl(215,14%,40%)] focus-visible:ring-[hsl(217,80%,58%)] h-11 pr-10" />
                     <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(215,14%,50%)] hover:text-white transition-colors">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-800 hover:text-slate-600 transition-colors">
                       {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
