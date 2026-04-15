@@ -32,7 +32,7 @@ export default function LoginPage() {
     <>
       <Toaster />
       <AuthBackground>
-      <div className="min-h-screen  flex items-center justify-center p-4">
+      <div className="min-h-dvh  flex items-center justify-center p-4">
 
         <div className="w-full max-w-sm">
           <div className="rounded-2xl overflow-hidden shadow-2xl"

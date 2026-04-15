@@ -3,7 +3,7 @@
 export default function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-dvh flex items-center justify-center p-4 relative overflow-hidden"
       style={{ background: "hsl(222, 22%, 14%)" }}
     >
       {/* SVG dot-grid pattern overlay */}
