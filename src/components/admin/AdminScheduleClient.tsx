@@ -191,7 +191,7 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
             <tr className="bg-muted/60">
               <th className="p-3 text-left text-xs font-semibold text-muted-foreground w-20 border-b border-border">Period</th>
               {DAYS.map(day => (
-                <th key={day} className="p-3 text-center text-xs font-semibold text-muted-foreground border-b border-l border-border">{day}</th>
+                <th key={day} className="p-3 text-center text-xs font-semibold text-muted-foreground border-b border-l border-border w-28">{day}</th>
               ))}
             </tr>
           </thead>
@@ -205,7 +205,7 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
                   const cell = cellMap[day][period];
                   const color = cell?.department_id ? deptColorMap[cell.department_id] : "";
                   return (
-                    <td key={day} className="border-b border-l border-border p-1.5 cursor-pointer" onClick={() => openEdit(day, period)}>
+                    <td key={day} className="border-b border-l border-border p-1.5 cursor-pointer w-28" onClick={() => openEdit(day, period)}>
                       <div className={`rounded-lg min-h-[64px] flex items-center justify-center p-2 transition-all hover:opacity-80 ${
                         cell?.department_id
                           ? `${color} border`
@@ -214,8 +214,8 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
                         {cell?.department_id ? (
                           <div className="text-center">
                             <p className="text-xs font-semibold leading-tight">{cell.departments?.name}</p>
-                            {(cell.course || cell.section || cell.branch || cell.subsection) && (
-                              <p className="text-[10px] opacity-70 mt-0.5">{[cell.course, cell.branch, cell.section, cell.subsection].filter(Boolean).join(" · ")}</p>
+                            {(cell.section || cell.branch || cell.subsection) && (
+                              <p className="text-[10px] opacity-70 mt-0.5">{[cell.branch, cell.section, cell.subsection].filter(Boolean).join(" - ")}</p>
                             )}
                           </div>
                         ) : (

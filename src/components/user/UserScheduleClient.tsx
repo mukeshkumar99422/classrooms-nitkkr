@@ -123,7 +123,7 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
             <tr className="bg-muted/60">
               <th className="p-3 text-left text-xs font-semibold text-muted-foreground w-20 border-b border-border">Period</th>
               {DAYS.map(day => (
-                <th key={day} className="p-3 text-center text-xs font-semibold text-muted-foreground border-b border-l border-border">{day}</th>
+                <th key={day} className="p-3 text-center text-xs font-semibold text-muted-foreground border-b border-l border-border w-28">{day}</th>
               ))}
             </tr>
           </thead>
@@ -138,7 +138,7 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
                   const isOwn = cell?.department_id === currentDeptId;
                   const isOther = cell?.department_id && !isOwn;
                   return (
-                    <td key={day} className="border-b border-l border-border p-1.5">
+                    <td key={day} className="border-b border-l border-border p-1.5 w-28">
                       <div
                         onClick={() => isOwn && openEdit(cell!)}
                         className={`rounded-lg min-h-[68px] flex flex-col items-center justify-center p-2 relative transition-all ${
@@ -151,9 +151,9 @@ export default function UserScheduleClient({ room, schedules, currentDeptId, cur
                             <p className={`text-xs font-semibold text-center leading-tight ${isOwn ? "text-white" : "text-gray-800"}`}>
                               {cell.departments?.name}
                             </p>
-                            {(cell.course || cell.branch || cell.section || cell.subsection) && (
+                            {(cell.branch || cell.section || cell.subsection) && (
                               <p className={`text-[10px] text-center mt-0.5 leading-tight ${isOwn ? "text-blue-200" : "text-gray-500"}`}>
-                                {[cell.course, cell.branch, cell.section, cell.subsection].filter(Boolean).join(" · ")}
+                                {[cell.branch, cell.section, cell.subsection].filter(Boolean).join(" - ")}
                               </p>
                             )}
                             {cell.professor_name && (
