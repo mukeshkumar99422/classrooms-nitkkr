@@ -135,10 +135,10 @@ export default function RoomsAdminClient({ initialRooms, departments }: Props) {
             <p className="text-xs" style={{ color: "hsl(215,14%,50%)" }}>Building prefix + room number (auto-uppercased)</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={loading || !roomName.trim()}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Room"}
             </Button>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

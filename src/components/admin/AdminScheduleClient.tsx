@@ -248,10 +248,10 @@ export default function AdminScheduleClient({ room, schedules, departments }: Pr
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveCell} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />} Save
             </Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

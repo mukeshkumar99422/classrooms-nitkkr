@@ -147,10 +147,10 @@ export default function DepartmentsClient({ initialDepts }: { initialDepts: Depa
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={loading || !addForm.name || !addForm.email || !addForm.password}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add & Send Invite"}
             </Button>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -170,10 +170,10 @@ export default function DepartmentsClient({ initialDepts }: { initialDepts: Depa
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
             </Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -187,10 +187,10 @@ export default function DepartmentsClient({ initialDepts }: { initialDepts: Depa
             This removes their account and all schedule allocations.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Permanently"}
             </Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
