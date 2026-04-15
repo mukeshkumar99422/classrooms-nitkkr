@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { email } = await req.json();
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-    const supabase = createAdminClient();
+    const supabase = await createAdminClient();
 
     // Check user exists (silently succeed either way for security)
     const { data: dept } = await supabase.from("departments").select("id").eq("email", email).single();
