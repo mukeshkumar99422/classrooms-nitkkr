@@ -143,7 +143,7 @@ export default function Sidebar({ isAdmin, deptName }: SidebarProps) {
             onClick={() => setOpen(false)} />
 
           {/* Drawer */}
-          <aside className="relative w-64 min-h-screen flex flex-col animate-slide-in-left sidebar-bg"
+          <aside className="relative w-64 min-h-dvh flex flex-col animate-slide-in-left sidebar-bg"
             style={{ borderRight: "1px solid hsl(222, 14%, 18%)" }}>
             <NavContent />
           </aside>

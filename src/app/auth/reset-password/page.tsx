@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
     <>
       <Toaster />
       <AuthBackground>
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="rounded-2xl overflow-hidden shadow-2xl"
             style={{ background: "hsl(222, 20%, 16%)", border: "1px solid hsl(222, 14%, 22%)" }}>
